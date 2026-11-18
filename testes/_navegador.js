@@ -21,16 +21,29 @@ const BINARIOS = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
 ];
 
+/* CM_NAVEGADOR (opcional) aponta um Chromium/Edge/Chrome em qualquer sistema,
+   por exemplo CM_NAVEGADOR=/usr/bin/chromium no Linux. Sem ela, vale a busca de
+   sempre nos caminhos do Windows. */
 function binario() {
+  const escolhido = (process.env.CM_NAVEGADOR || '').trim();
+  if (escolhido) {
+    if (fs.existsSync(escolhido)) return escolhido;
+    throw new Error('CM_NAVEGADOR aponta para um arquivo que não existe: ' + escolhido);
+  }
   for (const b of BINARIOS) if (fs.existsSync(b)) return b;
   const env = process.env.PROGRAMFILES || 'C:/Program Files';
-  const procura = fs.readdirSync(env).filter((d) => /google|microsoft/i.test(d));
+  const procura = fs.existsSync(env) ? fs.readdirSync(env).filter((d) => /google|microsoft/i.test(d)) : [];
   for (const d of procura) {
     const p = env + '/' + d + '/Application/msedge.exe';
     if (fs.existsSync(p)) return p;
   }
-  throw new Error('nenhum Chromium/Edge encontrado; instale um ou ajuste BINARIOS');
+  throw new Error('nenhum Chromium/Edge encontrado; instale um, ajuste BINARIOS ou defina CM_NAVEGADOR');
 }
+
+/* Chromium rodando como root (contêiner Linux) se recusa a abrir sem
+   --no-sandbox. No Windows e com usuário comum nada muda. */
+const SEM_SANDBOX = process.platform !== 'win32' && typeof process.getuid === 'function'
+  && process.getuid() === 0 ? ['--no-sandbox'] : [];
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -39,13 +52,13 @@ function criarNavegador(porta, rotulo) {
   let proc = null;
 
   function subir() {
-    proc = spawn(binario(), [
+    proc = spawn(binario(), SEM_SANDBOX.concat([
       '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
       '--hide-scrollbars', '--allow-insecure-localhost',
       '--remote-debugging-port=' + porta,
       '--user-data-dir=' + perfil,
       'about:blank',
-    ], { stdio: 'ignore' });
+    ]), { stdio: 'ignore' });
   }
 
   async function portaLivre() {

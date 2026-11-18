@@ -672,6 +672,11 @@ a aba para frente (`Page.bringToFront`): sem isso o Chromium headless não
 dispara eventos de foco, e o experimentar-peça do guarda-roupa — que é ligado
 por foco — nunca rodaria.
 
+O navegador é procurado nos caminhos do Edge e do Chrome no Windows. Em outro
+sistema, aponte o executável pela variável opcional `CM_NAVEGADOR` (por
+exemplo, `CM_NAVEGADOR=/usr/bin/chromium node testes/testar-jogo.js`); vale
+para os três testes de navegador.
+
 ```bash
 node testes/auditar-layout.js            # todas as telas, vários tamanhos de janela
 node testes/auditar-layout.js --prova    # injeta quebras e confere se o medidor pega

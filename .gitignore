@@ -1,0 +1,16 @@
+# Segredos locais (veja .env.example)
+.env
+.env.*
+!.env.example
+
+# Capturas e arquivos de trabalho do auditor de layout
+testes/capturas/
+
+# Lixo de editor e de sistema
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
