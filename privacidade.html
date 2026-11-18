@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="pagina-texto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Candy Math — como os dados são tratados</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="description" content="O que o Candy Math guarda, onde guarda, o que nunca sai do aparelho e como autorizar ou revogar cada saída de dados.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="pv-corpo">
+  <a class="pv-voltar" href="index.html"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar ao jogo</a>
+
+  <div class="pv-cartao">
+    <h1 class="pv-titulo">Como os seus dados são tratados</h1>
+    <p class="pv-sub">Este texto descreve o que o código do jogo faz hoje. Última conferência do texto:
+      16/11/2026. Ele não é um parecer jurídico e não declara conformidade integral com a LGPD nem com a
+      Lei nº 15.211/2025.</p>
+
+    <p class="pv-texto"><b>A regra do Candy Math é: nada sai sem uma decisão de quem acompanha.</b>
+      O progresso mora no seu navegador. Este repositório já vem com o endereço e a chave pública de um
+      projeto Supabase em <code>config.js</code> — mesmo assim, nenhuma informação de criança é enviada
+      enquanto três portas continuarem fechadas: conta de adulto criada <b>e</b> com e-mail confirmado,
+      criança registrada por esse adulto, e a finalidade <b>autorizada</b> na tela de quem acompanha.
+      As três estão fechadas de fábrica.</p>
+
+    <div class="pv-caixa pv-ok">
+      <p><b>Quer o aparelho fechado por completo?</b> Apague o valor de <code>supabaseUrl</code> e de
+        <code>supabaseAnonKey</code> em <code>config.js</code>. Sem esses dois campos o jogo não monta
+        cliente de banco nenhum: funciona inteiro, offline, e não existe caminho de rede a percorrer.
+        É a configuração recomendada para testar em casa ou na escola antes de ativar qualquer conexão.</p>
+    </div>
+
+    <h2 class="pv-secao">1. O que fica guardado, e onde</h2>
+    <p class="pv-texto">A lista completa de chaves, com o tempo de guarda de cada uma, está em
+      <a href="cookies.html">Cookies e armazenamento</a>. Resumo:</p>
+    <table class="pv-tabela">
+      <thead>
+        <tr><th>o que é</th><th>onde fica</th><th>quando sai do aparelho</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Progresso do jogo: estrelas, ano, nível, histórico por conteúdo, provas aplicadas,
+            itens comprados e equipados</td>
+          <td><code>localStorage</code>: <code>candymath_v3</code> para quem joga sem conta, e
+            <code>candymath_v3#&lt;perfil&gt;</code> — uma chave por estudante</td>
+          <td>Só com conta confirmada, criança registrada e a finalidade <b>nuvem</b> autorizada.
+            Sem qualquer uma das três, não sai.</td>
+        </tr>
+        <tr>
+          <td>Conta de quem acompanha: apelido escolhido, perfis de estudante (apelido e ano) e o
+            <b>derivado</b> da senha e do PIN</td>
+          <td><code>localStorage</code>, chave <code>candymath_contas_v1</code>. A senha e o PIN são
+            derivados com PBKDF2-SHA256, 600 000 iterações e sal de 16 bytes por segredo; o texto
+            original não é guardado em lugar nenhum</td>
+          <td><b>Nunca.</b> Esta conta é local: não há servidor que a conheça. Nem o derivado sai daqui.</td>
+        </tr>
+        <tr>
+          <td>Liberação da senha de quem acompanha</td>
+          <td><code>sessionStorage</code>, chave <code>candymath_adulto_ate</code></td>
+          <td>Nunca. Vale por 10 minutos e morre quando a aba fecha.</td>
+        </tr>
+        <tr>
+          <td>Autorizações de saída de dados: qual finalidade, quando, sobre qual versão deste texto</td>
+          <td><code>localStorage</code>, chave <code>candymath_consentimento_v1</code></td>
+          <td>Nunca. É o registro da decisão, e fica com quem decidiu.</td>
+        </tr>
+        <tr>
+          <td>Apelido da criança e código de vínculo</td>
+          <td>as mesmas chaves locais; o apelido é o único nome que pode subir</td>
+          <td>Com as três portas abertas. É um apelido escolhido pelo adulto, não o nome real.</td>
+        </tr>
+        <tr>
+          <td>Identificador deste aparelho</td>
+          <td><code>localStorage</code>, chave <code>candymath_id_aparelho</code></td>
+          <td>Vai junto no registro da criança, para o adulto reconhecer o aparelho. É um sorteio
+            aleatório, não impressão digital do navegador. Não é lido por terceiros nem usado para rastrear.</td>
+        </tr>
+        <tr>
+          <td>Preferências de voz e narração</td>
+          <td><code>localStorage</code>, chave <code>candymath_voz_v1</code></td>
+          <td>Nunca. A escolha da voz é local.</td>
+        </tr>
+        <tr>
+          <td>Texto da pergunta narrada e o áudio dela (cache da narração)</td>
+          <td>no banco do projeto publicado: tabela <code>narracoes</code> e bucket privado
+            <code>narracoes</code></td>
+          <td>Só com a finalidade <b>vozIA</b> autorizada e a função publicada. É o texto do problema de
+            Matemática e o mp3: nenhuma identidade, conta, criança ou aparelho vai junto, e nenhuma frase
+            é ligada a ninguém. Frases menos usadas saem com a poda automática.</td>
+        </tr>
+        <tr>
+          <td>Conta do adulto na nuvem</td>
+          <td>no banco do projeto publicado: tabela <code>perfis</code> (apelido e papel) e o e-mail
+            no serviço de autenticação</td>
+          <td>O e-mail serve apenas para confirmar a conta. Ele não aparece no jogo nem em relatório.
+            É dado do próprio adulto, digitado por ele.</td>
+        </tr>
+        <tr>
+          <td>Crianças e vínculos</td>
+          <td>tabelas <code>criancas</code> e <code>vinculos</code></td>
+          <td>Visíveis só para a conta que registrou a criança e para quem recebeu o código de vínculo —
+            decidido pelas políticas de linha (RLS) do banco.</td>
+        </tr>
+        <tr>
+          <td>Cópias do progresso</td>
+          <td>tabela <code>progressos</code></td>
+          <td>Leitura e escrita restritas ao adulto dono do vínculo.</td>
+        </tr>
+        <tr>
+          <td>Salas e lances do duelo</td>
+          <td>tabelas <code>salas</code> e <code>jogadas</code></td>
+          <td><b>Desligado por padrão em duas camadas.</b> Além da autorização por finalidade, o
+            interruptor <code>dueloRedeHabilitado</code> em <code>config.js</code> fica em
+            <code>false</code> até que as políticas de acesso sejam aplicadas e conferidas no projeto
+            de quem publica. Enquanto isso, o duelo funciona com as duas pessoas no mesmo aparelho.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="pv-secao">2. O que o jogo não faz</h2>
+    <ul class="pv-lista">
+      <li><b>Sem publicidade e sem rastreamento.</b> Não há script de anúncio, pixel, contador de visitas,
+        analítica de terceiros ou rede social embutida.</li>
+      <li><b>Sem cookies.</b> O armazenamento local é o único depósito, e é do próprio jogo — ver
+        <a href="cookies.html">Cookies e armazenamento</a>.</li>
+      <li><b>Sem perfil comportamental.</b> O histórico guarda acertos e erros por assunto de matemática —
+        é o que gera o boletim de desempenho. Não há inferência sobre humor, hábitos ou vida fora do jogo,
+        e nenhum dado é usado para recomendar conteúdo comercial.</li>
+      <li><b>Sem câmera, microfone, localização ou contatos.</b> A página pede cabeçalhos que bloqueiam
+        todos esses recursos; a narração usa voz sintetizada, não grava a sua voz.</li>
+      <li><b>Sem chat, sem mensagem livre, sem lista pública de jogadores.</b> No duelo em rede a outra
+        pessoa vê apenas o apelido e os lances da partida. Não há como enviar texto, foto ou contato.</li>
+      <li><b>Criança não tem cadastro, e-mail nem senha de conta.</b> O que existe é um <i>perfil local</i>
+        com apelido e ano, criado por quem acompanha. O PIN opcional de 4 números serve para separar
+        irmãos no mesmo aparelho — não é uma credencial de serviço, não sai do navegador e, depois de
+        cinco erros, só a senha de quem acompanha reabre o perfil.</li>
+      <li><b>Sem coleta além do necessário.</b> Não se pede nome real, idade exata, data de nascimento,
+        escola, turma, foto, telefone, endereço nem documento.</li>
+    </ul>
+
+    <h2 class="pv-secao">3. Autorização por finalidade — como funciona de verdade</h2>
+    <p class="pv-texto">O painel fica em <b>tela inicial → Responsáveis → seção 11, "Saídas de dados
+      autorizadas"</b>. São três finalidades, todas desligadas de fábrica. Para cada uma a tela mostra
+      o que sairia, para onde, o que <b>não</b> vai junto e qual é o ponto de atenção.</p>
+    <table class="pv-tabela">
+      <thead><tr><th>finalidade</th><th>o que sai</th><th>o que acontece sem autorização</th></tr></thead>
+      <tbody>
+        <tr><td><b>nuvem</b> — guardar o progresso na conta de quem acompanha</td>
+          <td>Apelido, ano, estrelas, acertos e erros por conteúdo, provas e roupas da Juba</td>
+          <td>O jogo grava só neste aparelho. A subida é recusada no código, não escondida da tela.</td></tr>
+        <tr><td><b>vozIA</b> — ler a pergunta em voz de inteligência artificial</td>
+          <td>Apenas <code>{ texto, voz }</code>: a frase da pergunta e o nome da voz</td>
+          <td>Quem fala é a voz do próprio aparelho, que funciona sem internet e não manda nada.</td></tr>
+        <tr><td><b>dueloRede</b> — duelar com outra pessoa pela internet</td>
+          <td>Apelido do estudante e os lances da partida</td>
+          <td>O duelo segue inteiro com as duas pessoas no mesmo aparelho.</td></tr>
+      </tbody>
+    </table>
+    <ul class="pv-lista">
+      <li><b>Autorizar exige a senha de quem acompanha.</b> A checagem está dentro da função que registra
+        a decisão, e não apenas no botão: nenhum outro caminho do código consegue ligar uma finalidade
+        sem passar por ela. É o consentimento específico e destacado de ao menos um dos responsáveis
+        (LGPD, art. 14, §1º).</li>
+      <li><b>Revogar não exige senha nenhuma.</b> Interromper o envio é direito a qualquer momento, de
+        graça e de forma facilitada (art. 8º, §5º). A assimetria é de propósito. Há também um botão que
+        desliga todas as saídas de uma vez.</li>
+      <li><b>Revogar vale na hora.</b> A subida de progresso que estava esperando o atraso é cancelada,
+        e a frase seguinte já é dita pela voz do aparelho.</li>
+      <li><b>Mudou este texto, a autorização caduca.</b> Cada decisão guarda a data da política que a
+        pessoa leu. Se a data mudar, as autorizações anteriores são desligadas e a tela pede que se
+        decida de novo, sobre o que está escrito hoje.</li>
+      <li><b>Fica registrado quando e sobre o quê.</b> Data da autorização, data da revogação e versão
+        do texto — e tudo isso entra no arquivo de exportação.</li>
+    </ul>
+    <div class="pv-caixa">
+      <p><b>O que este mecanismo não prova.</b> Ele registra que alguém que sabe a senha de quem acompanha
+        autorizou. Ele <b>não</b> verifica que essa pessoa é o responsável legal pela criança, nem colhe
+        autorização dos dois responsáveis quando a lei ou a escola exigir. Esse fluxo é decisão de quem
+        publica e está marcado como pendente na seção 6.</p>
+    </div>
+
+    <h2 class="pv-secao">4. Narração por voz: o que viaja</h2>
+    <p class="pv-texto">Com a finalidade <b>vozIA</b> autorizada, o navegador manda uma requisição para a
+      função <code>/api/voz</code> deste projeto, e o corpo é apenas <b>{ texto, voz }</b>.</p>
+    <ul class="pv-lista">
+      <li>Nomes reais, e-mails, códigos de acesso e progresso individual <b>não</b> são enviados ao serviço de voz.</li>
+      <li>A chave do serviço de voz mora em variável secreta do servidor. Ela nunca chega ao navegador.</li>
+      <li>A frase ouvida pode ficar <b>guardada no banco deste projeto</b>, com o áudio correspondente, para que a
+        mesma pergunta não seja sintetizada duas vezes. O que se guarda é o texto do problema de Matemática, o nome
+        da voz e o arquivo de áudio: <b>nenhuma</b> identidade, conta, criança, aparelho ou histórico acompanha a
+        frase, e ela não é ligada a ninguém. As menos usadas saem com o tempo, dentro de um teto configurável.</li>
+      <li>O áudio é mantido na memória da aba para reprodução imediata, com limite de tamanho, e desaparece ao fechar;
+        a cópia guardada no banco não é acessível pelo navegador — quem a serve é a função, pelo mesmo endereço de
+        sempre.</li>
+      <li>Falha de rede, frase grande demais ou excesso de pedidos: o jogo volta para a voz do próprio aparelho,
+        sem travar e sem expor o erro interno.</li>
+      <li>Sem a chave configurada, a opção aparece como pendente e só a voz do aparelho é usada.</li>
+    </ul>
+
+    <h2 class="pv-secao">5. Seus direitos (LGPD, art. 18) e como exercê-los</h2>
+    <table class="pv-tabela">
+      <thead><tr><th>direito</th><th>como fazer agora</th></tr></thead>
+      <tbody>
+        <tr><td>Saber o que existe sobre você</td>
+          <td>Boletim de desempenho (tela inicial → Responsáveis) mostra o que há neste aparelho; a tela
+            Conta e conexão mostra o que há na conta; esta página e a de cookies descrevem o resto.</td></tr>
+        <tr><td>Corrigir</td>
+          <td>Apelido e ano de cada estudante são editáveis em Perfis e conta. O e-mail da conta na nuvem
+            se corrige no próprio login.</td></tr>
+        <tr><td>Apagar</td>
+          <td>Em Responsáveis → <b>Apagar dados</b>: <i>apagar deste aparelho</i> limpa o armazenamento
+            local, e <i>apagar da conta</i> chama a função do banco que remove perfis, crianças, vínculos
+            e progresso. Cada uma pede um segundo clique. Um perfil de estudante também pode ser apagado
+            sozinho em Perfis e conta, e a conta local inteira pode ser removida por lá.</td></tr>
+        <tr><td>Levar os dados (portabilidade)</td>
+          <td>Perfis e conta → <b>Baixar meus dados</b> gera um arquivo JSON com o responsável, cada
+            estudante e o progresso completo, mais o registro das autorizações. Senhas e PINs não entram:
+            só o derivado existe, e ele não sai. Imprimir o boletim continua disponível para levar em papel.</td></tr>
+        <tr><td>Revogar o consentimento</td>
+          <td>Seção 11 do boletim: revogar por finalidade ou desligar todas. Sem senha, com efeito imediato.</td></tr>
+        <tr><td>Oposição e revisão de decisão automatizada</td>
+          <td>O jogo não toma decisão automatizada com efeito jurídico sobre ninguém. O nível de dificuldade
+            é ajustado por acertos e erros e é sempre visível e mudável na tela inicial — a explicação está
+            na seção 8 do boletim.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="pv-caixa">
+      <p><b>Atenção: a exclusão na nuvem só funciona no projeto publicado.</b> Neste repositório, as políticas de
+        acesso do banco ainda precisam ser aplicadas e conferidas por quem publica
+        (<code>node testes/testar-autorizacao.js</code> com contas de teste). Sem essa conferência, o jogo
+        mantém o duelo desligado e avisa que a exclusão remota depende do banco configurado.</p>
+    </div>
+
+    <h2 class="pv-secao">6. Responsável pelo tratamento de dados</h2>
+    <div class="pv-caixa">
+      <p><b>Pendente de preenchimento por quem publica.</b> Estes campos não podem ser inventados pelo
+        repositório; ficam vazios e marcados de propósito:</p>
+      <ul class="pv-lista">
+        <li>Responsável (pessoa física ou jurídica): <i>a preencher</i></li>
+        <li>Canal de contato para pedidos sobre dados: <i>a preencher</i></li>
+        <li>Encarregado (DPO), se houver: <i>a preencher</i></li>
+        <li>Base legal declarada para cada tratamento: <i>a preencher</i></li>
+        <li>Prazo de retenção e revisão periódica: <i>a preencher</i></li>
+        <li>Fluxo que comprova que o adulto é o responsável legal, e o que fazer quando dois responsáveis
+          precisam autorizar: <i>a preencher</i></li>
+        <li>Relatório de impacto à proteção de dados pessoais, se exigível para o seu caso: <i>a preencher</i></li>
+      </ul>
+    </div>
+
+    <h2 class="pv-secao">7. Proteção de crianças e adolescentes (Lei nº 15.211/2025 — ECA Digital)</h2>
+    <p class="pv-texto">O produto é dirigido a estudantes do 1º ao 9º ano. O que o código já faz, e o que
+      continua dependendo de quem publica:</p>
+    <table class="pv-tabela">
+      <thead><tr><th>exigência</th><th>o que está implementado</th></tr></thead>
+      <tbody>
+        <tr><td>Configuração mais protetiva por padrão</td>
+          <td>Todas as saídas de dados desligadas de fábrica; duelo em rede desligado também em
+            <code>config.js</code>; narração por IA recusada sem autorização. A primeira abertura não
+            envia nada.</td></tr>
+        <tr><td>Consentimento do responsável</td>
+          <td>Autorizar qualquer saída exige a senha de quem acompanha, com registro de data e versão
+            do texto. Ver a seção 3 e a ressalva sobre comprovação do vínculo legal.</td></tr>
+        <tr><td>Publicidade e perfilamento comercial</td>
+          <td>Inexistentes: não há anúncio, rastreador, analítica de terceiros nem recomendação comercial.
+            O histórico serve apenas ao boletim pedagógico.</td></tr>
+        <tr><td>Minimização</td>
+          <td>Apelido e ano. Nada de nome real, idade exata, escola, foto, contato ou localização.</td></tr>
+        <tr><td>Interação segura</td>
+          <td>Sem chat, sem mensagem livre, sem envio de imagem, sem lista pública de jogadores. No duelo
+            em rede a outra pessoa vê só o apelido e os lances — e a tela recomenda um apelido que não
+            identifique a criança.</td></tr>
+        <tr><td>Supervisão de quem acompanha</td>
+          <td>Boletim, perfis, PIN por estudante, porta de senha para tudo que é do adulto, exportação e
+            apagamento. A liberação da senha dura 10 minutos e morre com a aba.</td></tr>
+        <tr><td>Informação acessível</td>
+          <td>Aviso de primeira vez em linguagem direta, esta página, a de cookies e a seção 11 do boletim.
+            O aviso informa; não tranca o jogo atrás de um "aceitar".</td></tr>
+        <tr><td>Verificação de idade e vínculo legal</td>
+          <td><b>Pendente.</b> O jogo não verifica idade nem comprova responsabilidade legal. Definir esse
+            fluxo é obrigação de quem publica, e ele está marcado na seção 6.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 class="pv-secao">8. Segurança descrita sem exagero</h2>
+    <ul class="pv-lista">
+      <li>Senha e PIN locais: PBKDF2-SHA256, 600 000 iterações, sal de 16 bytes por segredo, derivado de
+        256 bits, comparação em tempo constante. Nada em claro no armazenamento. Cinco erros de PIN
+        travam o perfil até a senha de quem acompanha.</li>
+      <li>Esse esquema exige contexto seguro (HTTPS ou <code>localhost</code>). Em endereço inseguro o
+        jogo avisa e não cria conta, em vez de fingir que protege.</li>
+      <li>Cada estudante tem a própria chave de progresso: o de um não aparece no do outro, nem depois
+        de recarregar a página.</li>
+      <li>Todas as tabelas do banco têm políticas por linha, por operação. O código da sala, sozinho,
+        não abre os dados da sala.</li>
+      <li>As funções que escrevem em sala e lance rodam no banco e conferem quem chamou; o navegador não
+        escolhe a própria identidade nem o próprio assento.</li>
+      <li>As páginas pedem cabeçalhos que bloqueiam incorporação em quadro alheio, eliminam cheiro de
+        referidor e exigem HTTPS. A política de segurança de conteúdo não libera script inline.</li>
+      <li><b>Isso não é um teste de invasão.</b> Nenhum ataque simulado foi executado contra o projeto
+        publicado, e o limite de requisições da narração é contador em memória de cada instância: segura
+        varredura acidental, não é muralha contra tráfego distribuído.</li>
+      <li><b>A conta local não é um cofre contra quem tem o aparelho.</b> Ela separa estudantes e tranca
+        as telas do adulto; alguém com acesso ao navegador e à senha abre tudo. Para dado sensível de
+        verdade, a camada que protege é a do banco, com RLS conferida.</li>
+    </ul>
+
+    <p class="pv-sub">Este arquivo é a página prometida por <code>vercel.json</code> e o resumo que aparece na tela
+      dos responsáveis. Dúvidas sobre o código: veja <code>SEGURANCA.md</code> e <code>AUDITORIA.md</code> na
+      raiz do projeto. Lista de chaves e de pedidos a terceiros: <a href="cookies.html">Cookies e armazenamento</a>.</p>
+  </div>
+</main>
+</body>
+</html>

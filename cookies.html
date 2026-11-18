@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="pagina-texto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Candy Math — cookies e armazenamento</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="description" content="O Candy Math não usa cookies. Esta página lista cada chave que o jogo guarda no navegador, para que serve e como apagar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="pv-corpo">
+  <a class="pv-voltar" href="index.html"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar ao jogo</a>
+
+  <div class="pv-cartao">
+    <h1 class="pv-titulo">Cookies e armazenamento</h1>
+    <p class="pv-sub">Texto conferido em 16/11/2026 contra o código deste repositório. Não é parecer jurídico.</p>
+
+    <div class="pv-caixa pv-ok">
+      <p><b>O Candy Math não grava nenhum cookie.</b> Nem próprio, nem de terceiros por meio do jogo.
+        Não há faixa de "aceitar cookies" porque não há cookie para aceitar: pedir esse aceite seria
+        encenar uma escolha que não existe.</p>
+    </div>
+
+    <h2 class="pv-secao">1. O que o jogo guarda, e por quê</h2>
+    <p class="pv-texto">O depósito é o <code>localStorage</code> do seu navegador: um espaço que o próprio
+      site usa para lembrar de você entre uma visita e outra. Ele não viaja para servidor nenhum, não é
+      lido por outros sites e não serve para rastrear ninguém. Guardar o progresso é o próprio serviço
+      pedido — sem isso, cada visita começaria do zero.</p>
+    <table class="pv-tabela">
+      <thead>
+        <tr><th>chave</th><th>o que guarda</th><th>para que serve</th><th>quanto tempo fica</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>candymath_v3</code></td>
+          <td>Progresso de quem joga sem conta: estrelas, ano, nível, histórico por conteúdo, provas,
+            itens comprados e equipados</td>
+          <td>Continuar de onde parou</td>
+          <td>Até você apagar no jogo ou limpar os dados do navegador</td>
+        </tr>
+        <tr>
+          <td><code>candymath_v3#&lt;perfil&gt;</code></td>
+          <td>O mesmo progresso, um por estudante</td>
+          <td>Separar os estudantes: o de um não aparece no do outro</td>
+          <td>Até o perfil ser apagado</td>
+        </tr>
+        <tr>
+          <td><code>candymath_contas_v1</code></td>
+          <td>Apelido de quem acompanha, apelido e ano de cada perfil, e o <b>derivado</b> da senha e do
+            PIN (PBKDF2-SHA256, 600 000 iterações, sal de 16 bytes). A senha e o PIN em si não são
+            guardados em lugar nenhum</td>
+          <td>Abrir a área de quem acompanha e proteger cada perfil</td>
+          <td>Até a conta ser apagada</td>
+        </tr>
+        <tr>
+          <td><code>candymath_consentimento_v1</code></td>
+          <td>Cada autorização de saída de dados: se está ligada, quando foi decidida e sobre qual
+            versão do texto de privacidade</td>
+          <td>Provar a decisão e poder revogá-la; caducar quando o texto muda</td>
+          <td>Até você apagar os dados do navegador</td>
+        </tr>
+        <tr>
+          <td><code>candymath_voz_v1</code></td>
+          <td>Só duas coisas: a preferência de narração e o nome da voz escolhida</td>
+          <td>Não perguntar de novo a cada partida</td>
+          <td>Até você apagar os dados do navegador</td>
+        </tr>
+        <tr>
+          <td><code>candymath_aviso_v1</code></td>
+          <td>A data do aviso de transparência que você já leu</td>
+          <td>Mostrar o aviso uma vez, não a cada visita</td>
+          <td>Até você apagar os dados do navegador</td>
+        </tr>
+        <tr>
+          <td><code>candymath_id_aparelho</code></td>
+          <td>Um código aleatório deste navegador</td>
+          <td>Só é usado se a conexão estiver ligada, para quem acompanha reconhecer o aparelho.
+            Não é impressão digital do navegador nem identificador de publicidade</td>
+          <td>Até você apagar os dados do navegador</td>
+        </tr>
+        <tr>
+          <td><code>candymath_v2</code>, <code>candymath_v3_danificado</code></td>
+          <td>Restos de uma versão anterior, ou cópia de um arquivo que não abriu</td>
+          <td>Migração e diagnóstico. São lidos uma vez e não recebem escrita nova</td>
+          <td>Até você apagar os dados do navegador</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="pv-secao">2. O que some quando a aba fecha</h2>
+    <p class="pv-texto">A liberação da senha de quem acompanha fica em <code>sessionStorage</code>, na chave
+      <code>candymath_adulto_ate</code>. Ela vale por dez minutos e morre junto com a aba: fechar o navegador
+      tranca o boletim, os perfis, a conexão e a exclusão de dados outra vez. Nada dessa chave vai para o disco.</p>
+
+    <h2 class="pv-secao">3. Pedidos que saem do navegador sem o jogo mandar dados</h2>
+    <p class="pv-texto">A página busca fonte e ícone em servidores de terceiros. Esses pedidos levam o
+      endereço IP e o agente do navegador, como qualquer pedido na web — é o que a conexão exige.
+      <b>O jogo não acrescenta a eles nenhum dado de quem joga</b>: nem apelido, nem progresso, nem
+      identificador. Não há cookie de publicidade, pixel de rede social nem contador de visitas.</p>
+    <table class="pv-tabela">
+      <thead><tr><th>endereço</th><th>o que busca</th><th>quando</th></tr></thead>
+      <tbody>
+        <tr><td><code>fonts.googleapis.com</code> / <code>fonts.gstatic.com</code></td>
+          <td>As fontes Fredoka One e Nunito</td><td>Sempre, ao abrir a página</td></tr>
+        <tr><td><code>cdnjs.cloudflare.com</code></td>
+          <td>A folha de estilo dos ícones Font Awesome</td><td>Sempre, ao abrir a página</td></tr>
+        <tr><td><code>cdn.jsdelivr.net</code></td>
+          <td>A biblioteca supabase-js</td><td>Só quando a conexão está configurada em <code>config.js</code></td></tr>
+        <tr><td><code>/api/voz</code> (o próprio projeto)</td>
+          <td>O áudio da pergunta</td><td>Só com a narração por IA <b>autorizada</b> em Responsáveis</td></tr>
+        <tr><td>o banco do projeto publicado</td>
+          <td>Conta, vínculo e progresso</td><td>Só com a conexão configurada, a conta confirmada e a
+            saída de dados <b>autorizada</b> em Responsáveis</td></tr>
+      </tbody>
+    </table>
+    <p class="pv-texto">Quem publica pode trocar as fontes e os ícones por cópias locais e eliminar até
+      esses pedidos. O caminho está em <code>CONFIGURACAO-DEPLOY.md</code>.</p>
+
+    <h2 class="pv-secao">4. Por que não há parede de consentimento</h2>
+    <p class="pv-texto">Consentimento se pede para o que é opcional. O armazenamento local do item 1 é o
+      próprio funcionamento do jogo: não há como continuar de onde parou sem ele, e por isso ele não
+      depende de autorização — depende de informação, que é esta página e o aviso de primeira vez.</p>
+    <p class="pv-texto">Já as <b>saídas de dados</b> são opcionais e desligadas de fábrica. Para essas existe
+      consentimento de verdade, por finalidade, dentro do jogo: <b>tela inicial → Responsáveis →
+      seção 11, "Saídas de dados autorizadas"</b>. Lá se vê o que sairia, para onde, e se liga ou desliga
+      cada uma. Autorizar exige a senha de quem acompanha; revogar não exige nada e vale na hora.</p>
+
+    <h2 class="pv-secao">5. Como apagar tudo</h2>
+    <ul class="pv-lista">
+      <li><b>Pelo jogo:</b> tela inicial → Responsáveis → <i>Apagar dados</i>. Limpa o armazenamento local
+        deste navegador. Com conta criada, também é possível apagar um perfil por vez ou a conta inteira
+        em <i>Perfis e conta</i>.</li>
+      <li><b>Pelo navegador:</b> configurações → privacidade → limpar dados de sites → este endereço.
+        Apaga as chaves da tabela acima de uma vez.</li>
+      <li><b>Na nuvem, se a conexão estiver ligada:</b> Responsáveis → <i>Conta e conexão</i> →
+        <i>apagar meus registros na conta</i>. Remove perfis, crianças, vínculos e progresso do banco.</li>
+    </ul>
+
+    <h2 class="pv-secao">6. Onde isto se apoia na lei</h2>
+    <ul class="pv-lista">
+      <li><b>LGPD, art. 9º</b> — direito à informação clara sobre o tratamento: esta página, a política de
+        privacidade e o aviso de primeira vez.</li>
+      <li><b>LGPD, art. 8º, §5º</b> — o consentimento pode ser revogado a qualquer momento, de graça e de
+        forma facilitada: por isso revogar não pede senha.</li>
+      <li><b>LGPD, art. 14, §1º</b> — tratamento de dado de criança exige consentimento específico e
+        destacado de ao menos um dos responsáveis: por isso autorizar passa pela senha de quem acompanha.</li>
+      <li><b>LGPD, art. 6º, III</b> — adequação e necessidade: o jogo pede apelido e ano, e nada mais.
+        Não se pede nome real, idade exata, escola, foto, contato nem localização.</li>
+      <li><b>Lei nº 15.211/2025 (ECA Digital)</b> — proteção por padrão em produto dirigido a crianças:
+        sem publicidade, sem perfilamento para fins comerciais, sem chat, sem exposição pública de
+        apelido fora de uma sala de duelo que o adulto autorizou, e com a configuração mais protetiva
+        já valendo na primeira abertura.</li>
+    </ul>
+
+    <div class="pv-caixa">
+      <p><b>O que continua dependendo de quem publica.</b> Esta página descreve o mecanismo, não declara
+        conformidade integral. Controlador, encarregado, base legal de cada tratamento, prazo de retenção
+        e o fluxo que comprova que o adulto é o responsável legal estão marcados como pendentes em
+        <a href="privacidade.html">privacidade.html</a> e precisam de preenchimento e de análise jurídica.</p>
+    </div>
+
+    <p class="pv-sub"><a href="privacidade.html">Como os dados são tratados</a> ·
+      <a href="index.html">Voltar ao jogo</a></p>
+  </div>
+</main>
+</body>
+</html>
