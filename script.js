@@ -42,7 +42,33 @@ const G = {
   // Contagem por dia e por semana para missões, dias de atividade e
   // conquistas (metas.js). Fica separada de hist e só no aparelho.
   metas: window.CM_METAS.vazio(),
+  // Preferências deste estudante (Ajustes): ritmo, leitura, cores, narração e
+  // dificuldade por jogo. Ficam no save do perfil, nunca no aparelho todo.
+  prefs: null,
 };
+
+// Molde e saneamento das preferências. O storage é entrada não confiável:
+// só sim/não de verdade liga uma opção, e só os valores da lista passam.
+const VELOCIDADES_VOZ = [0.75, 1, 1.25];
+function prefsVazias() {
+  return { calmo: false, contraste: false, daltonismo: false, dislexia: false, vozVelocidade: 1, nivelPorJogo: {} };
+}
+function prefsSanit(p) {
+  const out = prefsVazias();
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return out;
+  ['calmo', 'contraste', 'daltonismo', 'dislexia'].forEach((k) => { out[k] = p[k] === true; });
+  if (VELOCIDADES_VOZ.indexOf(p.vozVelocidade) >= 0) out.vozVelocidade = p.vozVelocidade;
+  const n = p.nivelPorJogo && typeof p.nivelPorJogo === 'object' && !Array.isArray(p.nivelPorJogo) ? p.nivelPorJogo : {};
+  Object.keys(n).forEach((modo) => {
+    if (Object.prototype.hasOwnProperty.call(TELA_DO_JOGO, modo) && modo !== 'duelo' && modo !== 'prova'
+        && Number.isInteger(n[modo]) && n[modo] >= 1 && n[modo] <= 4) out.nivelPorJogo[modo] = n[modo];
+  });
+  return out;
+}
+G.prefs = prefsVazias();
+// Modo calmo: o movimento desacelera; a matemática, a pontuação e a validação
+// das respostas são as mesmas. O duelo tem relógio próprio e não muda.
+function calmo() { return !!(G.prefs && G.prefs.calmo); }
 
 // ──────────────────────────────────────────────────
 // 2. CONTEÚDO CURRICULAR
@@ -201,6 +227,50 @@ function premiarMetas() {
 }
 // avaliacao.js (fim da prova) e duelo.js chamam por window.
 window.premiarMetas = premiarMetas;
+
+// ── Ajustes deste estudante ──────────────────────────
+// As opções valem para o perfil e voltam com ele. A tela só liga e desliga;
+// quem aplica é aplicarPreferencias, chamada também ao carregar e ao trocar.
+function aplicarPreferencias() {
+  const p = G.prefs || prefsVazias();
+  const corpo = document.body;
+  if (corpo) {
+    corpo.classList.toggle('pref-calmo', p.calmo);
+  }
+  if (window.CM_NARRACAO && CM_NARRACAO.definirVelocidade) CM_NARRACAO.definirVelocidade(p.vozVelocidade);
+  pintarAjustes();
+}
+function pintarAjustes() {
+  const caixa = $('modalAjustes');
+  if (!caixa) return;
+  caixa.querySelectorAll('input[data-pref]').forEach((inp) => {
+    const k = inp.getAttribute('data-pref');
+    if (inp.type === 'checkbox') inp.checked = !!G.prefs[k];
+    else if (inp.type === 'radio') inp.checked = String(G.prefs[k]) === inp.value;
+  });
+  caixa.querySelectorAll('select[data-nivel-jogo]').forEach((sel) => {
+    const modo = sel.getAttribute('data-nivel-jogo');
+    sel.value = String(G.prefs.nivelPorJogo[modo] || 0);
+  });
+}
+function mudarAjuste(el) {
+  if (el.hasAttribute('data-nivel-jogo')) {
+    const modo = el.getAttribute('data-nivel-jogo');
+    const n = Number(el.value);
+    if (n >= 1 && n <= 4) G.prefs.nivelPorJogo[modo] = n; else delete G.prefs.nivelPorJogo[modo];
+  } else {
+    const k = el.getAttribute('data-pref');
+    if (!k || !Object.prototype.hasOwnProperty.call(prefsVazias(), k)) return;
+    G.prefs[k] = el.type === 'checkbox' ? el.checked : Number(el.value);
+  }
+  G.prefs = prefsSanit(G.prefs);
+  aplicarPreferencias();
+  saveState();
+}
+document.addEventListener('change', (ev) => {
+  const el = ev.target;
+  if (el && el.closest && el.closest('#modalAjustes') && (el.hasAttribute('data-pref') || el.hasAttribute('data-nivel-jogo'))) mudarAjuste(el);
+});
 
 // O que as medalhas leem do estado: o histórico por conteúdo (com a unidade de
 // cada nome, tirada da mesma tabela do boletim) e as provas feitas.
@@ -738,6 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   loadState();
+  aplicarPreferencias();
   if (premiarMetas()) saveState();
   montarSeletorDeAno();
   montarSeletorDeNivel();
@@ -791,11 +862,13 @@ function trocarEstudante(perfil) {
     provas: [], comoJogarVisto: {}, desde: Date.now(),
     codigoVinculo: '', apelidoCrianca: perfil ? perfil.apelido : '',
     metas: CM_METAS.vazio(),
+    prefs: prefsVazias(),
   });
   recentes = [];
   resetarMonte();
   loadState();
   if (perfil) { G.ano = C.clampAno(perfil.ano); G.apelidoCrianca = perfil.apelido; }
+  aplicarPreferencias();
   // Domínios e provas que já estavam no save viram medalha agora (uma vez).
   premiarMetas();
   renderShop(shopFilter);
@@ -1398,7 +1471,7 @@ function carregarChuva() {
   // certa está sempre na tela e as erradas são erros reais de cálculo.
   soltarOnda(q);
 
-  const vel = [1.8, 2.4, 3, 3.6][G.nivel - 1];
+  const vel = [1.8, 2.4, 3, 3.6][G.nivel - 1] * (calmo() ? 0.5 : 1);
   catchDropInterval = safeSetInterval(() => {
     const items = document.querySelectorAll('.catch-item');
     const pRect = $('catchPlayer').getBoundingClientRect();
@@ -1920,7 +1993,7 @@ function carregarBaloes() {
   balTravada = false;
   lancarOndaBaloes(q);
 
-  const vel = [1.1, 1.5, 1.9, 2.4][G.nivel - 1];
+  const vel = [1.1, 1.5, 1.9, 2.4][G.nivel - 1] * (calmo() ? 0.5 : 1);
   balInterval = safeSetInterval(() => {
     document.querySelectorAll('.balloon').forEach((b) => {
       const bottom = parseFloat(b.style.bottom || '-80') + vel;
@@ -2015,7 +2088,7 @@ function carregarPeixes() {
     f.style.top = (20 + i * 18 + Math.random() * 6) + '%';
     f.style.left = (6 + Math.random() * 74) + '%';
     f.dataset.dir = Math.random() < 0.5 ? '1' : '-1';
-    f.dataset.vel = (0.5 + G.nivel * 0.45 + Math.random() * 0.6).toFixed(2);
+    f.dataset.vel = ((0.5 + G.nivel * 0.45 + Math.random() * 0.6) * (calmo() ? 0.5 : 1)).toFixed(2);
     pool.appendChild(f);
   });
 
@@ -2186,8 +2259,8 @@ function carregarToupeira() {
   $('whackQuestion').textContent = q.txt;
   document.querySelectorAll('.mole').forEach((m) => { m.classList.remove('up', 'hit'); m.textContent = ''; });
 
-  const tempo = [1500, 1250, 1050, 900][G.nivel - 1];
-  const simultaneas = G.nivel >= 3 ? 2 : 1;
+  const tempo = [1500, 1250, 1050, 900][G.nivel - 1] * (calmo() ? 1.7 : 1);
+  const simultaneas = G.nivel >= 3 && !calmo() ? 2 : 1;
   whackInterval = safeSetInterval(() => {
     if (whackTravada) return;
     document.querySelectorAll('.mole.up').forEach((m) => { m.classList.remove('up'); m.textContent = ''; });
@@ -2760,6 +2833,7 @@ function abrirModalDeVerdade(id) {
     if (colecao) $('recMedalhasConta').textContent = colecao.ganhas + ' de ' + colecao.total;
   }
   if (id === 'modalConquistas') pintarConquistas();
+  if (id === 'modalAjustes') pintarAjustes();
   // O boletim inteiro vive em avaliacao.js: aqui só avisamos que ele abriu,
   // para que os números sejam relidos na hora (e não os da última vez).
   if (id === 'modalPais' && window.CM_AVALIACAO) window.CM_AVALIACAO.boletim();
@@ -2933,6 +3007,8 @@ function apagarLocal(semAviso) {
   G.codigoVinculo = '';
   G.apelidoCrianca = '';
   G.metas = CM_METAS.vazio();
+  G.prefs = prefsVazias();
+  aplicarPreferencias();
   resetarMonte();
   const guardado = gravarLocal();
   closeAllModals();
@@ -3101,13 +3177,13 @@ function resize() {
 const CONFETTI_COLORS = ['#FF6B9D','#FFD93D','#4ECDC4','#9B5DE5','#FF9A3C','#6BCB77','#3DBBFF'];
 
 function showConfetti() {
-  if (MOVIMENTO_REDUTO) return;
+  if (MOVIMENTO_REDUTO || calmo()) return;
   for (let i = 0; i < 50; i++) {
     setTimeout(() => spawnParticle(), i * 20);
   }
 }
 function spawnLevelUpConfetti() {
-  if (MOVIMENTO_REDUTO) return;
+  if (MOVIMENTO_REDUTO || calmo()) return;
   for (let i = 0; i < 120; i++) {
     setTimeout(() => spawnParticle(true), i * 15);
   }
@@ -3226,6 +3302,7 @@ function gravarLocal() {
       codigoVinculo: G.codigoVinculo,
       apelidoCrianca: G.apelidoCrianca,
       metas:        G.metas,
+      prefs:        G.prefs,
     }));
     return true;
   } catch (e) {
@@ -3366,6 +3443,7 @@ function loadState() {
   G.apelidoCrianca  = typeof d.apelidoCrianca === 'string' ? d.apelidoCrianca.replace(/[<>]/g, '').slice(0, 30) : '';
   // Save de antes das metas não tem o campo: começa vazio, sem tocar no resto.
   G.metas           = CM_METAS.sanitizar(d.metas, Date.now());
+  G.prefs           = prefsSanit(d.prefs);
   const sIcon = $('soundIcon');
   if (sIcon) sIcon.className = G.soundOn ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
 }

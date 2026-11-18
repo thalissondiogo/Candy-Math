@@ -833,6 +833,40 @@ async function main() {
     /^Bandana da Juba: Medalha da confeitaria\. É a última/.test((await texto(c, 'conqInsignia')) || ''), await texto(c, 'conqInsignia'));
   await avaliar(c, "closeModal('modalConquistas'); closeModal('modalRecords'); true");
 
+  // ── 13h. Ajustes: modo calmo desacelera o movimento, não a matemática ──
+  await avaliar(c, "goHub(); document.querySelector('.bha-ajustes').focus(); document.querySelector('.bha-ajustes').click(); true");
+  await espera(400);
+  const aj0 = await avaliar(c, `({ aberto:window.__J.aberto('modalAjustes'),
+    foco:document.getElementById('modalAjustes').contains(document.activeElement),
+    calmo:document.querySelector('#modalAjustes input[data-pref=calmo]').checked })`);
+  confere('o botão Ajustes do hub abre a tela com o foco dentro', aj0.aberto && aj0.foco, aj0);
+  confere('modo calmo começa desligado', aj0.calmo === false);
+  await avaliar(c, "document.querySelector('#modalAjustes input[data-pref=calmo]').click(); true");
+  const aj1 = await avaliar(c, `({ pref:G.prefs.calmo, classe:document.body.classList.contains('pref-calmo'),
+    salvo:(window.__J.save().prefs||{}).calmo })`);
+  confere('marcar o modo calmo liga, aplica e grava no save do estudante', aj1.pref && aj1.classe && aj1.salvo === true, aj1);
+  await avaliar(c, "closeModal('modalAjustes'); G.comoJogarVisto.fishing = true; true");
+  // A pescaria guarda a velocidade de cada peixe: no calmo é a metade da faixa normal.
+  const velPeixes = async () => {
+    await avaliar(c, "startMode('fishing'); true");
+    await esperarPor(c, "document.querySelectorAll('.fish').length > 0");
+    const r = await avaliar(c, `({ vels:Array.prototype.slice.call(document.querySelectorAll('.fish')).map(function(f){return +f.dataset.vel;}), nivel:G.nivel })`);
+    await avaliar(c, 'goHub(); true');
+    await espera(200);
+    return r;
+  };
+  const calmos = await velPeixes();
+  const tetoCalmo = (0.5 + calmos.nivel * 0.45 + 0.6) * 0.5;
+  confere('no modo calmo todo peixe nada no máximo à metade da velocidade normal',
+    calmos.vels.length > 0 && calmos.vels.every((v) => v <= tetoCalmo + 0.01), { calmos, tetoCalmo });
+  await avaliar(c, "openModal('modalAjustes'); document.querySelector('#modalAjustes input[data-pref=calmo]').click(); closeModal('modalAjustes'); true");
+  const normais = await velPeixes();
+  const pisoNormal = 0.5 + normais.nivel * 0.45;
+  confere('desligado, os peixes voltam à velocidade de sempre', normais.vels.every((v) => v >= pisoNormal - 0.01), { normais, pisoNormal });
+  confere('o modo calmo não muda os pontos dos jogos', await avaliar(c, 'PONTOS.fishing === 15 && PONTOS.catch === 20'));
+  // Deixa ligado para conferir que volta depois de recarregar (seção 14).
+  await avaliar(c, "openModal('modalAjustes'); document.querySelector('#modalAjustes input[data-pref=calmo]').click(); closeModal('modalAjustes'); true");
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);
@@ -862,6 +896,8 @@ async function main() {
   confere('a melhor sequência volta', voltou.seq === guardado.seq);
   confere('o histórico por conteúdo volta inteiro', voltou.hist === guardado.hist && voltou.hist > 0, voltou);
   confere('as metas do dia e a lista de dias voltam iguais', voltou.metas === guardado.metas, { guardado: guardado.metas, voltou: voltou.metas });
+  confere('o modo calmo volta ligado depois de recarregar',
+    await avaliar(c, "G.prefs.calmo === true && document.body.classList.contains('pref-calmo')"));
   confere('a ficha de dias volta depois de recarregar', (await texto(c, 'hubDiasVal')) === '1 dia', await texto(c, 'hubDiasVal'));
   const missoesVolta = await avaliar(c, `({ pagas:G.metas.dia.pagas.slice(), stars:G.stars,
     contas:Array.prototype.slice.call(document.querySelectorAll('#missoesDia .hm-conta')).map(function(e){return e.textContent.trim();}) })`);

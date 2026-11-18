@@ -159,6 +159,10 @@
     nota = '';
   }
 
+  // Velocidade da fala, por estudante (Ajustes). Só os três valores da lista.
+  let velocidade = 1;
+  function definirVelocidade(v) { velocidade = [0.75, 1, 1.25].indexOf(v) >= 0 ? v : 1; return velocidade; }
+
   function peloAparelho(texto) {
     if (!temVozDoAparelho()) {
       ultimoErro = 'este navegador não traz voz nenhuma';
@@ -167,7 +171,7 @@
     }
     const fala = new root.SpeechSynthesisUtterance(texto);
     fala.lang = 'pt-BR';
-    fala.rate = 0.92;
+    fala.rate = 0.92 * velocidade;
     const id = config().vozes.find((v) => v.id === voz);
     fala.pitch = /miguel/i.test((id && id.rotulo) || '') ? 0.85 : 1.1;
     fala.onend = function () { if (atual && atual.fala === fala) { atual = null; avisar(); } };
@@ -192,6 +196,7 @@
 
   function tocarUrl(chave, url) {
     const audio = new root.Audio(url);
+    audio.playbackRate = velocidade;
     audio.onended = function () { if (atual && atual.audio === audio) { atual = null; avisar(); } };
     audio.onerror = function () {
       if (atual && atual.audio === audio) atual = null;
@@ -478,6 +483,8 @@
     preferencias: function () { return PREFERENCIAS.slice(); },
     definirPreferencia: definirPreferencia,
     definirVoz: definirVoz,
+    definirVelocidade: definirVelocidade,
+    velocidade: function () { return velocidade; },
     estado: function () { return resumo(); },
     aoMudar: aoMudar,
     podeFalar: function () {

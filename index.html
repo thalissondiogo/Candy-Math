@@ -163,6 +163,9 @@
       <button class="btn-hub-action bha-voz" id="btnVoz" data-acao="openModal" data-args='["modalNarracao"]'>
         <i class="fa-solid fa-comment-dots" id="vozIcon"></i><span>Voz</span>
       </button>
+      <button class="btn-hub-action bha-ajustes" data-acao="openModal" data-args='["modalAjustes"]'>
+        <i class="fa-solid fa-sliders"></i><span>Ajustes</span>
+      </button>
     </div>
 
     <div class="hub-body">
@@ -838,6 +841,22 @@
         Ficou uns dias sem jogar? Nada se perde: é só começar uma sequência nova.</p>
       <p class="rec-nota">Para recomeçar ou apagar dados, abra o boletim dos responsáveis: a tecla fica lá,
         protegida por uma confirmação a mais.</p>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: AJUSTES DO ESTUDANTE ===== -->
+  <div id="modalAjustes" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloAjustes" style="display:none">
+    <div class="modal-box ajustes-box">
+      <div class="modal-hdr">
+        <h2 id="tituloAjustes"><i class="fa-solid fa-sliders"></i> Ajustes</h2>
+        <button class="btn-close-modal" aria-label="Fechar ajustes" data-acao="closeModal" data-args='["modalAjustes"]'><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="aj-nota">Valem só para quem está jogando agora e ficam guardados no perfil.</p>
+      <fieldset class="aj-grupo">
+        <legend>Ritmo</legend>
+        <label class="aj-opcao"><input type="checkbox" data-pref="calmo">
+          <span><strong>Modo calmo</strong> Nos jogos que se mexem (chuva, balões, pescaria, toupeira) tudo anda mais devagar. As contas e as estrelas são as mesmas.</span></label>
+      </fieldset>
     </div>
   </div>
 

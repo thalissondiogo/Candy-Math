@@ -236,6 +236,10 @@ async function main() {
   await avaliar(c, "for(var i=0;i<8;i++){registrarTrabalho({o:'Domínio do Téo',u:'numeros'});registrarResultado(true);}saveState();true");
   const medalhaTeo = await avaliar(c, `((window.__T.save('candymath_v3#${idTeo}')||{}).metas||{}).conquistas`);
   confere('a medalha do Téo vai para o save dele', !!medalhaTeo && !!medalhaTeo.ganhas.dom_1, medalhaTeo);
+  // O Téo liga o modo calmo pela tela de Ajustes; a preferência é dele.
+  await avaliar(c, "openModal('modalAjustes'); document.querySelector('#modalAjustes input[data-pref=calmo]').click(); closeModal('modalAjustes'); true");
+  confere('o modo calmo do Téo vai para o save dele',
+    (await avaliar(c, `((window.__T.save('candymath_v3#${idTeo}')||{}).prefs||{}).calmo`)) === true);
   // Segunda medalha (reforço acertado) leva a bandana do Téo ao estágio 2.
   await avaliar(c, 'CM_METAS.registrarReforco(G.metas);premiarMetas();saveState();true');
   const bandanaTeo = await avaliar(c, `({ estagio:CM_METAS.insignia(G.metas).estagio,
@@ -292,6 +296,8 @@ async function main() {
     + "return {rotulo:s.getAttribute('aria-label'), broche:s.innerHTML.indexOf('M110.0 169.5')>=0};})()");
   confere('o palco da entrada, com a Manu ativa, desenha a bandana dela (sem broche)',
     palcoManu.rotulo === 'Juba Candy esperando para jogar' && !palcoManu.broche, palcoManu);
+  confere('a Manu entra sem o modo calmo do Téo',
+    await avaliar(c, "G.prefs.calmo === false && !document.body.classList.contains('pref-calmo')"));
   const medalhasManu = await avaliar(c, 'G.metas.conquistas');
   confere('a Manu entra sem as medalhas do Téo',
     Object.keys(medalhasManu.ganhas).length === 0 && medalhasManu.reforcos === 0, medalhasManu);
