@@ -232,6 +232,14 @@ async function main() {
   const metasManuAntes = await avaliar(c, `(window.__T.save('candymath_v3#${idManu}')||{}).metas`);
   confere('as metas da Manu não recebem as respostas do Téo',
     !metasManuAntes || (metasManuAntes.dia.respostas === 0 && metasManuAntes.dias.length === 0), metasManuAntes);
+  // Téo domina um conteúdo e ganha a medalha; ela é dele, não da Manu.
+  await avaliar(c, "for(var i=0;i<8;i++){registrarTrabalho({o:'Domínio do Téo',u:'numeros'});registrarResultado(true);}saveState();true");
+  const medalhaTeo = await avaliar(c, `((window.__T.save('candymath_v3#${idTeo}')||{}).metas||{}).conquistas`);
+  confere('a medalha do Téo vai para o save dele', !!medalhaTeo && !!medalhaTeo.ganhas.dom_1, medalhaTeo);
+  // A medalha (e uma missão, se cumprida) pagam estrelas: o saldo do Téo é o
+  // que ficou gravado, não mais os 90 de antes.
+  const estrelasTeo = await avaliar(c, `(window.__T.save('candymath_v3#${idTeo}')||{}).stars`);
+  confere('o prêmio da medalha entrou no saldo do Téo', estrelasTeo >= 90 + 20, estrelasTeo);
 
   // ── 5. trocar para Manu: PIN errado, depois certo ──
   await avaliar(c, "document.getElementById('hubEstudanteAcao').click()");
@@ -262,6 +270,9 @@ async function main() {
   const metasManu = await avaliar(c, 'G.metas');
   confere('Manu entra com as próprias metas, sem os dias do Téo',
     metasManu.dia.respostas === 0 && metasManu.semana.respostas === 0 && metasManu.dias.length === 0, metasManu);
+  const medalhasManu = await avaliar(c, 'G.metas.conquistas');
+  confere('a Manu entra sem as medalhas do Téo',
+    Object.keys(medalhasManu.ganhas).length === 0 && medalhasManu.reforcos === 0, medalhasManu);
   const missoesManu = await avaliar(c, 'CM_METAS.missoes(G.metas, Date.now())');
   confere('as missões da Manu não carregam o acerto do Téo',
     missoesManu.length === 4 && missoesManu.every((m) => m.valor === 0 && !m.feita), missoesManu);
@@ -348,7 +359,7 @@ async function main() {
   confere('exportação traz os dois estudantes', JSON.parse(exportado).estudantes.length === 2);
   confere('exportação traz o progresso de cada um',
     JSON.parse(exportado).estudantes.some((e) => e.progresso && e.progresso.stars === 640)
-    && JSON.parse(exportado).estudantes.some((e) => e.progresso && e.progresso.stars === 90));
+    && JSON.parse(exportado).estudantes.some((e) => e.progresso && e.progresso.stars === estrelasTeo));
   confere('exportação não leva senha, PIN nem derivado',
     !/"senha"|"pin"|"hash"|"sal"/.test(exportado) && exportado.indexOf(SENHA) < 0 && exportado.indexOf(codigo) < 0);
   confere('exportação leva o registro das autorizações',

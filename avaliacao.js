@@ -233,6 +233,8 @@ function terminarProva() {
     // duas contas apagaria justamente a diferença que o boletim compara
     // (resolver com apoio × resolver sozinha). Ela vive em G.provas e é lida
     // sozinha nas seções 5 e 6.
+    // A prova não paga estrela; as medalhas de prova também não. Só são anotadas.
+    if (tem('premiarMetas')) root.premiarMetas();
     if (tem('saveState')) root.saveState();
   }
 

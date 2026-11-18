@@ -120,6 +120,8 @@ function reforcoDe(q) {
   item = Object.assign({}, item);
   item.ref = item.ref || item.id;
   item.unidade = C.UNIDADES[item.u] || item.u;
+  // Marca a questão como reforço: acertá-la é aprender com o erro de antes.
+  item.reforco = true;
   monte.usadas.push(item.ref);
   marcarRecente(item.ref);
   registrarTrabalho(item);
@@ -183,7 +185,67 @@ function premiarMetas() {
     G.stars += m.estrelas;
     recados.push('Missão cumprida: ' + m.texto + '. Ganhou ' + m.estrelas + ' estrelas.');
   });
+  CM_METAS.colherConquistas(G.metas, dadosDasConquistas(), agora).forEach((c) => {
+    G.stars += c.estrelas;
+    recados.push('Nova medalha: ' + c.nome + '!' + (c.estrelas ? ' Ganhou ' + c.estrelas + ' estrelas.' : ''));
+  });
   if (recados.length) showToast(recados.join(' '));
+  return recados.length;
+}
+// avaliacao.js (fim da prova) e duelo.js chamam por window.
+window.premiarMetas = premiarMetas;
+
+// O que as medalhas leem do estado: o histórico por conteúdo (com a unidade de
+// cada nome, tirada da mesma tabela do boletim) e as provas feitas.
+function dadosDasConquistas() {
+  const meta = metaConteudo();
+  return { hist: G.hist, provas: G.provas, unidadeDe: (nome) => (meta[nome] || {}).u || '' };
+}
+
+// A coleção de medalhas. Montada por DOM e textContent, como o cartão de missões.
+function pintarConquistas() {
+  const grade = $('conqGrade');
+  if (!grade) return;
+  grade.textContent = '';
+  const lista = CM_METAS.conquistas(G.metas, dadosDasConquistas(), Date.now());
+  lista.forEach((c) => {
+    const li = document.createElement('li');
+    li.className = 'conq-card' + (c.ganha ? ' conq-ganha' : ' conq-bloqueada');
+    const icone = document.createElement('span');
+    icone.className = 'conq-icone';
+    const i = document.createElement('i');
+    i.className = 'fa-solid ' + (c.ganha ? c.icone : 'fa-lock');
+    i.setAttribute('aria-hidden', 'true');
+    icone.appendChild(i);
+    const nome = document.createElement('h3');
+    nome.className = 'conq-nome';
+    nome.textContent = c.nome;
+    const desc = document.createElement('p');
+    desc.className = 'conq-desc';
+    desc.textContent = c.descricao;
+    // Situação escrita por extenso: cadeado e cor nunca são a única pista.
+    const situacao = document.createElement('p');
+    situacao.className = 'conq-situacao';
+    if (c.ganha) {
+      situacao.textContent = 'Conquistada em ' + new Date(c.quando).toLocaleDateString('pt-BR');
+    } else {
+      situacao.textContent = 'Ainda não · ' + (c.id.indexOf('degrau') === 0
+        ? 'nível ' + C.NIVEIS[c.valor - 1]
+        : c.valor + ' de ' + c.alvo);
+    }
+    const premio = document.createElement('p');
+    premio.className = 'conq-premio';
+    premio.textContent = c.estrelas ? '+' + c.estrelas + ' estrelas' : 'Só medalha';
+    li.appendChild(icone);
+    li.appendChild(nome);
+    li.appendChild(desc);
+    li.appendChild(situacao);
+    li.appendChild(premio);
+    grade.appendChild(li);
+  });
+  const ganhas = lista.filter((c) => c.ganha).length;
+  $('conqResumo').textContent = ganhas + ' de ' + lista.length + ' medalhas';
+  return { ganhas: ganhas, total: lista.length };
 }
 
 // O cartão de missões do hub. Montado por DOM e textContent: o texto vem do
@@ -661,6 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   loadState();
+  if (premiarMetas()) saveState();
   montarSeletorDeAno();
   montarSeletorDeNivel();
   marcarDecoracao();
@@ -718,6 +781,8 @@ function trocarEstudante(perfil) {
   resetarMonte();
   loadState();
   if (perfil) { G.ano = C.clampAno(perfil.ano); G.apelidoCrianca = perfil.apelido; }
+  // Domínios e provas que já estavam no save viram medalha agora (uma vez).
+  premiarMetas();
   renderShop(shopFilter);
   updateWardrobePreview();
   entrarNoHub();
@@ -1086,6 +1151,7 @@ function handleQuizAnswer(chosen, correct, btn) {
   if (chosen === correct) {
     btns.forEach(b => b.disabled = true);
     btn.classList.add('correct');
+    if (G.currentQ && G.currentQ.reforco) CM_METAS.registrarReforco(G.metas);
     ganhou('quiz');
     const msg = G.streak >= 3 ? pick(MSGS.streak) : pick(MSGS.correct);
     showQuizFeedback(msg);
@@ -2426,6 +2492,7 @@ function finishRound(mode) {
 
   if (feitos === total && G.nivel < 4) G.nivel++;
   else if (feitos <= 1 && G.nivel > 1) G.nivel--;
+  if (G.nivel > nivelAnterior) CM_METAS.registrarDegrau(G.metas, G.nivel);
 
   G.stars += bonus;
   CM_METAS.registrarRodada(G.metas, { acertos: feitos, total: total }, Date.now());
@@ -2664,7 +2731,10 @@ function abrirModalDeVerdade(id) {
     $('recDiasRecorde').textContent = seqDias.recorde;
     $('recCorrect').textContent = numBR(G.totalCorrect);
     montarRoteiro();
+    const colecao = pintarConquistas();
+    if (colecao) $('recMedalhasConta').textContent = colecao.ganhas + ' de ' + colecao.total;
   }
+  if (id === 'modalConquistas') pintarConquistas();
   // O boletim inteiro vive em avaliacao.js: aqui só avisamos que ele abriu,
   // para que os números sejam relidos na hora (e não os da última vez).
   if (id === 'modalPais' && window.CM_AVALIACAO) window.CM_AVALIACAO.boletim();

@@ -43,7 +43,7 @@ const MEDIDAS = [
 ];
 const TELAS = ['splash', 'entrada', 'hub', 'quiz', 'catch', 'puzzle', 'truefalse', 'memory', 'operator',
   'balloon', 'fishing', 'sort', 'whack', 'sequence', 'balance', 'roulette',
-  'shop', 'records', 'pais', 'apagar', 'levelup'];
+  'shop', 'records', 'medalhas', 'pais', 'apagar', 'levelup'];
 const FOTOS = {
   'hub-1440x900': 1, 'quiz-390x844': 1, 'puzzle-320x640': 1, 'pais-360x800': 1, 'shop-320x640': 1,
   'splash-800x420': 1, 'splash-390x844': 1, 'whack-740x360': 1,
@@ -246,6 +246,7 @@ const FRENTE = {
   entrada: { tela: 'screenEntrada' },
   shop: { tela: 'screenHub', modal: 'modalShop' },
   records: { tela: 'screenHub', modal: 'modalRecords' },
+  medalhas: { tela: 'screenHub', modal: 'modalConquistas' },
   pais: { tela: 'screenHub', modal: 'modalPais' },
   apagar: { tela: 'screenHub', modal: 'modalApagar' },
   levelup: { tela: 'screenHub', modal: 'modalLevelUp' },
@@ -577,6 +578,8 @@ const dirigir = {
   hub: "showScreen('screenHub');updateHubUI();",
   shop: "showScreen('screenHub');openShop();renderShop('hat');",
   records: "showScreen('screenHub');openModal('modalRecords');",
+  // Coleção com metade ganha e metade bloqueada: os dois desenhos de cartão.
+  medalhas: "showScreen('screenHub');G.metas.conquistas.ganhas={dom_1:Date.now(),degrau_3:Date.now(),reforco_1:Date.now(),prova_1:Date.now(),prova_boa:Date.now()};openModal('modalConquistas');",
   pais: "showScreen('screenHub');openModal('modalPais');",
   apagar: "showScreen('screenHub');openModal('modalApagar');",
   levelup: "showScreen('screenHub');G.trabalhados=['Adição com números grandes','Frações equivalentes','Porcentagem no dia a dia'];openModal('modalLevelUp');",

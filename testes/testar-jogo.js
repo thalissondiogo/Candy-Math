@@ -51,6 +51,9 @@ const dentro = `(function(){
       r.forEach(function(m){ window.__metasPagas += m.estrelas; }); return r; };
     CM_METAS.colherMarco = function(){ var r = colherD.apply(this, arguments);
       if (r) window.__metasPagas += r.estrelas; return r; };
+    var colherC = CM_METAS.colherConquistas;
+    CM_METAS.colherConquistas = function(){ var r = colherC.apply(this, arguments);
+      r.forEach(function(m){ window.__metasPagas += m.estrelas; }); return r; };
     CM_METAS.__medido = true;
   }
   window.__J = {
@@ -650,7 +653,7 @@ async function main() {
      contagem recomeça do zero e o dia passa a contar na quinta questão. */
   const marco = await avaliar(c, `(function(){
     var agora=Date.now(), dia=function(n){ return CM_METAS.diaLocal(agora - n*864e5); };
-    G.metas = CM_METAS.sanitizar({ dias:[dia(2), dia(1)], marcos:[] }, agora);
+    G.metas = CM_METAS.sanitizar({ dias:[dia(2), dia(1)], marcos:[], conquistas:G.metas.conquistas }, agora);
     var antes=G.stars, toasts=[];
     for (var i=0;i<5;i++){ registrarTrabalho({o:'Sequência de dias (teste)', u:'numeros'}); registrarResultado(i<3); }
     var depois=G.stars;
@@ -672,7 +675,7 @@ async function main() {
      as duas diárias, seja qual for o par sorteado (acertos, rodadas boas,
      assuntos); nenhuma semanal chega lá. O pagamento esperado é 2 × 15. */
   const cartao = await avaliar(c, `(function(){
-    G.metas = CM_METAS.vazio(Date.now()); updateHubUI();
+    var medalhas = G.metas.conquistas; G.metas = CM_METAS.vazio(Date.now()); G.metas.conquistas = medalhas; updateHubUI();
     var lista=function(id){ return Array.prototype.slice.call(document.querySelectorAll('#'+id+' .hm-item')).map(function(li){
       var b=li.querySelector('[role=progressbar]');
       return { texto:li.querySelector('.hm-texto').textContent, conta:li.querySelector('.hm-conta').textContent,
@@ -710,6 +713,79 @@ async function main() {
   confere('a missão cumprida é avisada', /Missão cumprida: .+ Ganhou 15 estrelas/.test(missoes.aviso), missoes.aviso);
   confere('as missões pagas ficam gravadas no save', JSON.stringify(missoes.salvo) === JSON.stringify(missoes.pagas), missoes);
 
+  // ── 13f. medalhas: coleção, domínio, degrau, reforço e prova ──
+  if (reforco) {
+    confere('acertar a questão de reforço do quiz deu a medalha Aprendeu com o erro',
+      await avaliar(c, '!!G.metas.conquistas.ganhas.reforco_1 && G.metas.conquistas.reforcos >= 1'),
+      await avaliar(c, 'G.metas.conquistas'));
+  }
+  const medalha = await avaliar(c, `(function(){
+    var agora=Date.now(), antes=G.stars, jaTinha=!!G.metas.conquistas.ganhas.dom_1;
+    var base=C.sortear({ano:G.ano, nv:G.nivel, usadas:[]});
+    for (var i=0;i<8;i++){ registrarTrabalho(Object.assign({}, base, {o:'Domínio (teste)'})); registrarResultado(true); }
+    saveState();   // o jogo grava depois de cada resposta; aqui também
+    var ganho=G.stars-antes, quando=G.metas.conquistas.ganhas.dom_1;
+    var antes2=G.stars; premiarMetas(); premiarMetas();
+    return { jaTinha:jaTinha, quando:quando, aviso:window.__J.aviso().join(' | '), repetido:G.stars-antes2,
+      salvo:((window.__J.save().metas||{}).conquistas||{}).ganhas };
+  })()`);
+  confere('oito acertos no mesmo conteúdo dão a medalha Primeiro domínio', !medalha.jaTinha && medalha.quando > 0, medalha);
+  confere('a medalha nova é avisada com o prêmio', /Nova medalha: Primeiro domínio! Ganhou 20 estrelas/.test(medalha.aviso), medalha.aviso);
+  confere('a medalha não é paga duas vezes', medalha.repetido === 0, medalha);
+  confere('a medalha fica gravada no save com a data', medalha.salvo && medalha.salvo.dom_1 === medalha.quando, medalha.salvo);
+  // Escolher o nível no seletor não é subir de degrau.
+  await avaliar(c, 'escolherNivel(4); true');
+  confere('escolher Domínio no seletor não dá medalha de degrau',
+    await avaliar(c, '!G.metas.conquistas.ganhas.degrau_3 && !G.metas.conquistas.ganhas.degrau_4 && G.metas.conquistas.degrau < 3'));
+  const degrau = await avaliar(c, `(function(){
+    escolherNivel(2); G.roundCorrect = 5; finishRound('quiz');
+    return { nivel:G.nivel, degrau:G.metas.conquistas.degrau, ganhou:!!G.metas.conquistas.ganhas.degrau_3 };
+  })()`);
+  confere('fechar a rodada inteira no Prática sobe para Desafio e dá a medalha', degrau.nivel === 3 && degrau.degrau === 3 && degrau.ganhou, degrau);
+  await esperaResumo();
+  await espera(600);
+  await clicar(c, '#modalLevelUp', 'Continuar');
+  await espera(300);
+  // Prova: o mesmo registro que avaliacao.js grava, e a mesma chamada.
+  const prova = await avaliar(c, `(function(){
+    var antes=G.stars;
+    G.provas = G.provas.concat([{quando:Date.now(), duracao:300, ano:G.ano, nv:G.nivel, total:12, respondidas:12, acertos:10,
+      itens:[]}]);
+    premiarMetas(); saveState();
+    return { ganhas:G.metas.conquistas.ganhas, estrelas:G.stars-antes };
+  })()`);
+  confere('prova feita até o fim com 10 de 12 dá as duas medalhas de prova',
+    !!prova.ganhas.prova_1 && !!prova.ganhas.prova_boa, prova.ganhas);
+  confere('medalha de prova não dá estrela', prova.estrelas === 0, prova);
+  confere('o avaliacao.js chama o premiador quando a prova termina',
+    await avaliar(c, "typeof window.premiarMetas === 'function'"));
+  // A coleção, pelo caminho da criança: Recordes → Ver medalhas.
+  await avaliar(c, "goHub(); openModal('modalRecords')");
+  await espera(300);
+  const botaoMedalhas = await avaliar(c, "window.__J.texto('recMedalhasConta')");
+  confere('Recordes dizem quantas medalhas já foram ganhas', /^\d+ de 10$/.test(botaoMedalhas), botaoMedalhas);
+  await clicar(c, '#modalRecords', 'Ver medalhas');
+  await espera(400);
+  const colecao = await avaliar(c, `(function(){
+    var cards=Array.prototype.slice.call(document.querySelectorAll('#conqGrade .conq-card'));
+    return { aberto:window.__J.aberto('modalConquistas'), total:cards.length,
+      ganhas:cards.filter(function(x){return x.classList.contains('conq-ganha');}).map(function(x){
+        return { nome:x.querySelector('.conq-nome').textContent, sit:x.querySelector('.conq-situacao').textContent }; }),
+      bloqueadas:cards.filter(function(x){return x.classList.contains('conq-bloqueada');}).map(function(x){
+        return { sit:x.querySelector('.conq-situacao').textContent, cadeado:!!x.querySelector('.fa-lock'),
+          desc:x.querySelector('.conq-desc').textContent }; }),
+      resumo:window.__J.texto('conqResumo'), foco:document.getElementById('modalConquistas').contains(document.activeElement),
+      noEstado:Object.keys(G.metas.conquistas.ganhas).length };
+  })()`);
+  confere('o botão abre a coleção de medalhas', colecao.aberto && colecao.total === 10, colecao);
+  confere('a coleção mostra as ganhas com a data', colecao.ganhas.length === colecao.noEstado && colecao.ganhas.length >= 4
+    && colecao.ganhas.every((g) => /^Conquistada em \d{2}\/\d{2}\/\d{4}$/.test(g.sit)), colecao.ganhas);
+  confere('bloqueadas dizem por escrito que faltam e quanto, com cadeado e critério',
+    colecao.bloqueadas.every((b) => /^Ainda não · /.test(b.sit) && b.cadeado && b.desc.length > 20), colecao.bloqueadas);
+  confere('o resumo da coleção bate com o botão de Recordes', colecao.resumo === botaoMedalhas + ' medalhas', { resumo: colecao.resumo, botaoMedalhas });
+  confere('o foco do teclado entra na coleção', colecao.foco);
+  await avaliar(c, "closeModal('modalConquistas'); closeModal('modalRecords'); true");
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);
@@ -719,7 +795,7 @@ async function main() {
   await espera(300);
   const guardado = await avaliar(c, `({chave:CM_CONTAS.chaveDoSave(),stars:G.stars,ano:G.ano,nivel:G.nivel,
     acertos:G.totalCorrect,owned:G.owned.slice().sort(),equip:G.equip,seq:G.bestStreak,hist:Object.keys(G.hist).length,
-    metas:JSON.stringify(G.metas)})`);
+    metas:JSON.stringify(G.metas), conquistas:JSON.stringify(G.metas.conquistas)})`);
   confere('o save do convidado fica na chave sem perfil', guardado.chave === 'candymath_v3', guardado.chave);
   confere('as duas peças estão vestidas antes de recarregar',
     guardado.equip[slotBarato] === barato && guardado.equip.glasses === oculos, guardado.equip);
@@ -742,6 +818,9 @@ async function main() {
   confere('a ficha de dias volta depois de recarregar', (await texto(c, 'hubDiasVal')) === '1 dia', await texto(c, 'hubDiasVal'));
   const missoesVolta = await avaliar(c, `({ pagas:G.metas.dia.pagas.slice(), stars:G.stars,
     contas:Array.prototype.slice.call(document.querySelectorAll('#missoesDia .hm-conta')).map(function(e){return e.textContent.trim();}) })`);
+  const medalhasVolta = await avaliar(c, 'JSON.stringify(G.metas.conquistas)');
+  confere('as medalhas e as datas voltam iguais depois de recarregar', medalhasVolta === guardado.conquistas,
+    { guardado: guardado.conquistas, voltou: medalhasVolta });
   confere('as missões cumpridas voltam pagas depois de recarregar, sem pagar de novo',
     missoesVolta.pagas.length === 2 && missoesVolta.stars === guardado.stars
     && missoesVolta.contas.every((t) => t === 'Concluída'), missoesVolta);

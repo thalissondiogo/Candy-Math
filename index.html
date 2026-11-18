@@ -831,10 +831,26 @@
         <ul class="rec-lista" id="recLista"></ul>
         <p class="rec-nota">Soma apenas o que você já jogou aqui. É um palpite sobre o caminho, não uma nota da escola.</p>
       </div>
+      <button class="btn-prova-acao btn-medalhas" data-acao="openModal" data-args='["modalConquistas"]'>
+        <i class="fa-solid fa-medal"></i> Ver medalhas <span class="btn-medalhas-conta">(<span id="recMedalhasConta">0 de 0</span>)</span>
+      </button>
       <p class="rec-nota" id="recDiasNota">Um dia conta quando você fecha uma rodada ou responde 5 questões.
         Ficou uns dias sem jogar? Nada se perde: é só começar uma sequência nova.</p>
       <p class="rec-nota">Para recomeçar ou apagar dados, abra o boletim dos responsáveis: a tecla fica lá,
         protegida por uma confirmação a mais.</p>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: MEDALHAS ===== -->
+  <div id="modalConquistas" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloConq" style="display:none">
+    <div class="modal-box records-box conq-box">
+      <div class="modal-hdr">
+        <h2 id="tituloConq"><i class="fa-solid fa-medal"></i> Medalhas</h2>
+        <button class="btn-close-modal" aria-label="Fechar medalhas" data-acao="closeModal" data-args='["modalConquistas"]'><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="conq-resumo" id="conqResumo" aria-live="polite"></p>
+      <ul class="conq-grade" id="conqGrade"></ul>
+      <p class="rec-nota">Cada medalha vem uma vez só. Errar não tira nenhuma: dominar um conteúdo é chegar a 80% de acerto em 8 respostas ou mais, e a taxa sobe de novo com cada acerto.</p>
     </div>
   </div>
 

@@ -132,7 +132,7 @@ confere('só as cinco unidades sobrevivem',
   JSON.stringify(Object.keys(sujo.dia.porUnidade).sort()) === JSON.stringify(M.UNIDADES.slice().sort()), Object.keys(sujo.dia.porUnidade));
 confere('campo estranho no período não passa', !('extra' in sujo.dia));
 confere('campo estranho na raiz não passa',
-  JSON.stringify(Object.keys(sujo).sort()) === '["dia","dias","marcos","recordeDias","semana"]', Object.keys(sujo));
+  JSON.stringify(Object.keys(sujo).sort()) === '["conquistas","dia","dias","marcos","recordeDias","semana"]', Object.keys(sujo));
 confere('semana com chave de outra semana recomeça', sujo.semana.chave === '2026-11-16' && sujo.semana.respostas === 0, sujo.semana);
 const muitos = [];
 for (let i = 0; i < 600; i++) muitos.push(M.diaLocal(em(2025, 1, 1) + i * 864e5));
@@ -290,6 +290,92 @@ confere('storage: boas nunca passa de rodadas, perfeitas nunca passa de boas', f
 const antigoSemBoas = M.sanitizar({ dia: { chave: M.diaLocal(tD), respostas: 2, acertos: 1, rodadas: 1, perfeitas: 0 } }, tD);
 confere('save da sequência de dias (sem boas e pagas) abre com os dois em zero',
   antigoSemBoas.dia.boas === 0 && Array.isArray(antigoSemBoas.dia.pagas) && antigoSemBoas.dia.pagas.length === 0, antigoSemBoas.dia);
+
+// ── 5d. conquistas ──────────────────────────────────────────
+const CQ = M.CONQUISTAS;
+confere('dez medalhas, ids sem repetição', CQ.length === 10 && new Set(CQ.map((c) => c.id)).size === 10);
+const medidasDeMissao = CAT.dia.concat(CAT.semana).map((m) => m.medida);
+confere('nenhuma medalha repete o que missão ou marco de dias já premiam',
+  CQ.every((c) => medidasDeMissao.indexOf(c.medida) < 0 && !/dia/.test(c.medida)), CQ.map((c) => c.medida));
+confere('medalhas de prova não dão estrela (prova não paga, por decisão do avaliacao.js)',
+  CQ.filter((c) => /prova/.test(c.medida.toLowerCase())).every((c) => c.estrelas === 0) && CQ.filter((c) => /prova/i.test(c.medida)).length === 2);
+confere('todas as medalhas somam 305 estrelas na vida do perfil', CQ.reduce((t, c) => t + c.estrelas, 0) === 305);
+confere('toda medalha tem nome, descrição e ícone', CQ.every((c) => c.nome && c.descricao.length > 20 && /^fa-/.test(c.icone)));
+
+const uni = (n) => ({ 'Frações': 'numeros', 'Área': 'geometria', 'Tempo': 'medidas', 'Gráficos': 'dados' }[n] || '');
+const dom = (hist) => M.contarDominios(hist, uni);
+confere('7 respostas certas ainda não é domínio (amostra pequena)', dom({ 'Frações': { feitas: 7, certas: 7 } }).conteudos === 0);
+confere('8 de 8 é domínio', dom({ 'Frações': { feitas: 8, certas: 8 } }).conteudos === 1);
+confere('8 de 10 (80%) é domínio', dom({ 'Frações': { feitas: 10, certas: 8 } }).conteudos === 1);
+confere('7 de 10 (70%) ainda não é', dom({ 'Frações': { feitas: 10, certas: 7 } }).conteudos === 0);
+confere('errar não fecha a porta: 7 de 10 vira domínio com mais 5 acertos (12 de 15)',
+  dom({ 'Frações': { feitas: 15, certas: 12 } }).conteudos === 1);
+confere('unidades contam só conteúdos dominados e conhecidos',
+  dom({ 'Frações': { feitas: 8, certas: 8 }, 'Área': { feitas: 9, certas: 8 }, 'Tempo': { feitas: 3, certas: 3 },
+    'Sem unidade': { feitas: 9, certas: 9 } }).unidades === 2);
+confere('entrada torta no histórico é ignorada',
+  dom({ a: null, b: { feitas: '9', certas: 9 }, c: [], 'Frações': { feitas: 8, certas: 8 } }).conteudos === 1);
+
+const tQ = em(2026, 11, 18, 15);
+const cq = M.vazio(tQ);
+const ganhaIds = (lista) => lista.map((c) => c.id).sort().join(',');
+confere('sem progresso, nenhuma medalha', M.colherConquistas(cq, { hist: {}, provas: [], unidadeDe: uni }, tQ).length === 0);
+const hist1 = { 'Frações': { feitas: 8, certas: 8 } };
+const n1 = M.colherConquistas(cq, { hist: hist1, provas: [], unidadeDe: uni }, tQ);
+confere('primeiro conteúdo dominado dá a medalha Primeiro domínio (+20)', ganhaIds(n1) === 'dom_1' && n1[0].estrelas === 20, n1);
+confere('a medalha guarda a data em que foi ganha', cq.conquistas.ganhas.dom_1 === tQ);
+confere('a mesma medalha não é paga de novo', M.colherConquistas(cq, { hist: hist1, provas: [], unidadeDe: uni }, tQ + 1000).length === 0);
+const piorou = { 'Frações': { feitas: 20, certas: 10 } };
+M.colherConquistas(cq, { hist: piorou, provas: [], unidadeDe: uni }, tQ + 2000);
+const retrato = M.conquistas(cq, { hist: piorou, provas: [], unidadeDe: uni }, tQ + 2000).find((c) => c.id === 'dom_1');
+confere('errar depois não tira a medalha ganha', retrato.ganha && cq.conquistas.ganhas.dom_1 === tQ, retrato);
+
+M.registrarDegrau(cq, 2);
+confere('subir para Prática não dá medalha', M.colherConquistas(cq, {}, tQ).length === 0);
+M.registrarDegrau(cq, 3);
+confere('o jogo subir para Desafio dá a medalha', ganhaIds(M.colherConquistas(cq, {}, tQ)) === 'degrau_3');
+M.registrarDegrau(cq, 2);
+confere('descer de nível não apaga o degrau alcançado', cq.conquistas.degrau === 3);
+M.registrarDegrau(cq, 9); M.registrarDegrau(cq, '4');
+confere('degrau inválido é ignorado', cq.conquistas.degrau === 3);
+M.registrarDegrau(cq, 4);
+confere('chegar ao Domínio dá a medalha', ganhaIds(M.colherConquistas(cq, {}, tQ)) === 'degrau_4');
+
+M.registrarReforco(cq);
+confere('acertar a primeira questão de reforço dá Aprendeu com o erro', ganhaIds(M.colherConquistas(cq, {}, tQ)) === 'reforco_1');
+for (let i = 0; i < 8; i++) M.registrarReforco(cq);
+confere('9 reforços ainda não dão Não desiste', M.colherConquistas(cq, {}, tQ).length === 0);
+M.registrarReforco(cq);
+confere('o décimo reforço dá Não desiste', ganhaIds(M.colherConquistas(cq, {}, tQ)) === 'reforco_10');
+
+confere('prova que parou antes do fim não conta',
+  M.colherConquistas(cq, { provas: [{ acertos: 10, total: 12, respondidas: 10 }] }, tQ).length === 0);
+const prov = M.colherConquistas(cq, { provas: [{ acertos: 6, total: 12, respondidas: 12 }, { acertos: 13, total: 12 }] }, tQ);
+confere('uma prova feita dá Primeira prova, sem estrela', ganhaIds(prov) === 'prova_1' && prov[0].estrelas === 0, prov);
+confere('prova com acertos > total é ignorada (não vira prova boa)', !cq.conquistas.ganhas.prova_boa);
+const provB = M.colherConquistas(cq, { provas: [{ acertos: 9, total: 12 }] }, tQ);
+confere('9 de 12 (75%) dá Prova bem feita, sem estrela', ganhaIds(provB) === 'prova_boa' && provB[0].estrelas === 0, provB);
+
+const histTudo = {};
+['Frações', 'Área', 'Tempo'].forEach((n) => { histTudo[n] = { feitas: 9, certas: 9 }; });
+for (let i = 0; i < 7; i++) histTudo['Extra ' + i] = { feitas: 8, certas: 7 };
+const tudo = M.colherConquistas(cq, { hist: histTudo, provas: [], unidadeDe: uni }, tQ);
+confere('dez domínios em três unidades dão as três medalhas que faltavam', ganhaIds(tudo) === 'dom_10,dom_5,dom_unid', tudo);
+confere('com tudo ganho, a coleção mostra 10 de 10',
+  M.conquistas(cq, { hist: histTudo, unidadeDe: uni }, tQ).filter((c) => c.ganha).length === 10);
+
+const volta2 = M.sanitizar(copia(cq), tQ + 3600e3);
+const ordenado = (c) => JSON.stringify({ ganhas: Object.keys(c.ganhas).sort().map((k) => [k, c.ganhas[k]]), reforcos: c.reforcos, degrau: c.degrau });
+confere('medalhas e datas voltam iguais depois de recarregar', ordenado(volta2.conquistas) === ordenado(cq.conquistas), volta2.conquistas);
+confere('depois de recarregar, nenhuma é paga de novo',
+  M.colherConquistas(volta2, { hist: histTudo, provas: [{ acertos: 12, total: 12 }], unidadeDe: uni }, tQ + 3600e3).length === 0);
+const hostil = M.sanitizar({ conquistas: { ganhas: { dom_1: tQ, inventada: tQ, dom_5: tQ + 30 * 864e5, dom_10: '2026-11-18',
+  reforco_1: -5, degrau_3: 1000 }, reforcos: -3, degrau: 9 } }, tQ);
+confere('storage: só medalha do catálogo, com data possível', JSON.stringify(Object.keys(hostil.conquistas.ganhas)) === '["dom_1"]',
+  hostil.conquistas.ganhas);
+confere('storage: reforços negativos e degrau impossível voltam ao começo', hostil.conquistas.reforcos === 0 && hostil.conquistas.degrau === 1);
+confere('save sem conquistas abre com a coleção vazia',
+  JSON.stringify(M.sanitizar({ dias: [] }, tQ).conquistas) === '{"ganhas":{},"reforcos":0,"degrau":1}');
 
 // ── 6. privacidade: nada disto sobe para a nuvem ────────────
 const nuvem = fs.readFileSync(path.join(RAIZ, 'nuvem.js'), 'utf8');

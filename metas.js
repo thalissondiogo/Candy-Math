@@ -29,6 +29,7 @@
        dias:   ['AAAA-MM-DD', ...]    dias com atividade, em ordem, sem repetir
        recordeDias: n                 maior sequência já feita (sobrevive ao teto da lista)
        marcos: [3, 7, ...]            marcos de dias seguidos já premiados (uma vez cada)
+       conquistas: { ganhas: {id: quando}, reforcos: n, degrau: 1..4 }
        dia:    PERIODO do dia de hoje
        semana: PERIODO da semana atual (chave = data da segunda-feira)
      }
@@ -84,6 +85,44 @@ const MISSOES = {
   ],
 };
 const POR_ESCOPO = 2;
+
+// ── conquistas ───────────────────────────────────────────
+// Medalhas de uma vez só, sobre sinais que as missões e os marcos de dias NÃO
+// medem: domínio por conteúdo, o degrau que o jogo sobe, acertar a questão de
+// reforço que vem depois de um erro e a Prova de Aprendizagem. Total de
+// acertos, rodada perfeita e dias seguidos ficam de fora de propósito: já são
+// missão ou marco, e premiar duas vezes a mesma coisa é inflação.
+// "Dominar" um conteúdo = 8 respostas ou mais e 80% de acerto ou mais (o
+// mesmo limite do "Você já domina" dos Recordes, com amostra maior). Errar não
+// tira medalha nenhuma: a taxa volta a subir com acertos.
+// As da prova não dão estrela: avaliacao.js já decidiu que prova não paga,
+// para ninguém fazer prova pelo prêmio.
+const DOMINIO_FEITAS = 8;
+const DOMINIO_TAXA = 0.8;
+const PROVA_BOA = 0.75;
+const CONQUISTAS = [
+  { id: 'dom_1', icone: 'fa-seedling', estrelas: 20, nome: 'Primeiro domínio', medida: 'dominios', alvo: 1,
+    descricao: 'Domine um conteúdo: 8 respostas ou mais, com 80% de acerto.' },
+  { id: 'dom_5', icone: 'fa-book-open', estrelas: 40, nome: 'Cinco domínios', medida: 'dominios', alvo: 5,
+    descricao: 'Domine 5 conteúdos diferentes.' },
+  { id: 'dom_10', icone: 'fa-medal', estrelas: 60, nome: 'Dez domínios', medida: 'dominios', alvo: 10,
+    descricao: 'Domine 10 conteúdos diferentes. Subir de nível traz conteúdo novo.' },
+  { id: 'dom_unid', icone: 'fa-shapes', estrelas: 50, nome: 'Domínio em 3 unidades', medida: 'unidades', alvo: 3,
+    descricao: 'Tenha conteúdos dominados em 3 unidades da matemática (números, álgebra, geometria, medidas ou dados).' },
+  { id: 'degrau_3', icone: 'fa-stairs', estrelas: 30, nome: 'Chegou ao Desafio', medida: 'degrau', alvo: 3,
+    descricao: 'Suba até o nível Desafio fechando rodadas inteiras. Escolher o nível no seletor não conta.' },
+  { id: 'degrau_4', icone: 'fa-mountain', estrelas: 50, nome: 'Chegou ao Domínio', medida: 'degrau', alvo: 4,
+    descricao: 'Suba até o nível Domínio fechando rodadas inteiras.' },
+  { id: 'reforco_1', icone: 'fa-lightbulb', estrelas: 15, nome: 'Aprendeu com o erro', medida: 'reforcos', alvo: 1,
+    descricao: 'No Quiz, depois de errar, acerte a questão parecida que aparece em seguida.' },
+  { id: 'reforco_10', icone: 'fa-dumbbell', estrelas: 40, nome: 'Não desiste', medida: 'reforcos', alvo: 10,
+    descricao: 'Acerte 10 dessas questões parecidas que vêm depois de um erro.' },
+  { id: 'prova_1', icone: 'fa-file-pen', estrelas: 0, nome: 'Primeira prova', medida: 'provas', alvo: 1,
+    descricao: 'Faça uma Prova de Aprendizagem até o fim. Prova não vale estrela: vale saber o que ficou.' },
+  { id: 'prova_boa', icone: 'fa-award', estrelas: 0, nome: 'Prova bem feita', medida: 'provaBoa', alvo: 1,
+    descricao: 'Acerte 75% ou mais de uma Prova de Aprendizagem.' },
+];
+const IDS_CONQUISTAS = CONQUISTAS.map((c) => c.id);
 const TETO = 999999;
 const FORMA_DIA = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -135,9 +174,27 @@ function periodoVazio(chave) {
   return { chave: chave, respostas: 0, acertos: 0, rodadas: 0, boas: 0, perfeitas: 0, pagas: [], porUnidade: porUnidade };
 }
 
+function conquistasVazias() { return { ganhas: {}, reforcos: 0, degrau: 1 }; }
+
 function vazio(agora) {
-  return { dias: [], recordeDias: 0, marcos: [],
+  return { dias: [], recordeDias: 0, marcos: [], conquistas: conquistasVazias(),
     dia: periodoVazio(diaLocal(agora)), semana: periodoVazio(semanaLocal(agora)) };
+}
+
+// Medalha só volta do storage se existir no catálogo e trouxer uma data
+// possível: nem antes do jogo existir, nem depois de amanhã.
+function conquistasSanit(c, agora) {
+  const out = conquistasVazias();
+  if (!c || typeof c !== 'object' || Array.isArray(c)) return out;
+  const limite = emData(agora).getTime() + 864e5;
+  const ganhas = c.ganhas && typeof c.ganhas === 'object' && !Array.isArray(c.ganhas) ? c.ganhas : {};
+  IDS_CONQUISTAS.forEach((id) => {
+    const q = ganhas[id];
+    if (Number.isFinite(q) && q >= Date.UTC(2024, 0, 1) && q <= limite) out.ganhas[id] = Math.round(q);
+  });
+  out.reforcos = contador(c.reforcos);
+  out.degrau = Number.isInteger(c.degrau) && c.degrau >= 1 && c.degrau <= 4 ? c.degrau : 1;
+  return out;
 }
 
 // O que vem do storage é entrada não confiável: cada número volta pelo molde,
@@ -189,6 +246,7 @@ function sanitizar(bruto, agora) {
     marcos: Array.isArray(d.marcos)
       ? d.marcos.filter((n) => VALORES_MARCOS.indexOf(n) >= 0 && !vistos[n] && (vistos[n] = true)).sort((a, b) => a - b)
       : [],
+    conquistas: conquistasSanit(d.conquistas, agora),
     dia: periodoSanit(d.dia, hoje, 'dia'),
     semana: periodoSanit(d.semana, semanaLocal(agora), 'semana'),
   };
@@ -203,6 +261,7 @@ function virar(estado, agora) {
   if (!Array.isArray(estado.dias)) estado.dias = [];
   if (!Number.isInteger(estado.recordeDias)) estado.recordeDias = 0;
   if (!Array.isArray(estado.marcos)) estado.marcos = [];
+  if (!estado.conquistas || typeof estado.conquistas !== 'object') estado.conquistas = conquistasVazias();
   [estado.dia, estado.semana].forEach((p) => {
     if (!Array.isArray(p.pagas)) p.pagas = [];
     if (!Number.isInteger(p.boas)) p.boas = 0;
@@ -369,6 +428,94 @@ function colherMissoes(estado, agora) {
   return novas;
 }
 
+// Conteúdos dominados no histórico, e em quantas unidades temáticas. O histórico
+// guarda o nome do conteúdo; quem sabe a unidade de cada nome é o script.js
+// (unidadeDe), que monta essa tabela a partir do banco e dos geradores.
+function contarDominios(hist, unidadeDe) {
+  const nomes = Object.keys(hist && typeof hist === 'object' ? hist : {}).filter((n) => {
+    const h = hist[n];
+    return h && Number.isInteger(h.feitas) && Number.isInteger(h.certas)
+      && h.feitas >= DOMINIO_FEITAS && h.certas / h.feitas >= DOMINIO_TAXA;
+  });
+  const unidades = {};
+  nomes.forEach((n) => {
+    const u = typeof unidadeDe === 'function' ? unidadeDe(n) : '';
+    if (UNIDADES.indexOf(u) >= 0) unidades[u] = true;
+  });
+  return { conteudos: nomes.length, unidades: Object.keys(unidades).length };
+}
+
+// A questão de reforço do Quiz (a parecida, depois de errar) foi acertada.
+function registrarReforco(estado) {
+  if (!estado) return estado;
+  virar(estado, Date.now());
+  estado.conquistas.reforcos = Math.min(estado.conquistas.reforcos + 1, TETO);
+  return estado;
+}
+
+// O jogo subiu o nível por fechar a rodada inteira. Só quem chama isso é o fim
+// de rodada: escolher o nível no seletor não passa por aqui.
+function registrarDegrau(estado, nivel) {
+  if (!estado || !Number.isInteger(nivel) || nivel < 1 || nivel > 4) return estado;
+  virar(estado, Date.now());
+  if (nivel > estado.conquistas.degrau) estado.conquistas.degrau = nivel;
+  return estado;
+}
+
+function medirConquista(c, estado, dados) {
+  const d = dados || {};
+  const dom = contarDominios(d.hist, d.unidadeDe);
+  // Prova conta se foi até o fim: avaliacao.js grava respondidas < total quando
+  // ela acaba antes da última questão.
+  const provas = Array.isArray(d.provas) ? d.provas.filter((p) => p && Number.isInteger(p.total) && p.total > 0
+    && Number.isInteger(p.acertos) && p.acertos >= 0 && p.acertos <= p.total
+    && (p.respondidas === undefined || p.respondidas === p.total)) : [];
+  switch (c.medida) {
+    case 'dominios': return dom.conteudos;
+    case 'unidades': return dom.unidades;
+    case 'degrau': return estado.conquistas.degrau;
+    case 'reforcos': return estado.conquistas.reforcos;
+    case 'provas': return provas.length;
+    case 'provaBoa': return provas.some((p) => p.acertos / p.total >= PROVA_BOA) ? 1 : 0;
+    default: return 0;
+  }
+}
+
+// O retrato da coleção, para a tela.
+function conquistas(estado, dados, agora) {
+  if (!estado) return [];
+  virar(estado, agora);
+  return CONQUISTAS.map((c) => {
+    const quando = estado.conquistas.ganhas[c.id] || 0;
+    // degrau começa em 1: o progresso mostrado é o que falta subir.
+    const valor = Math.min(medirConquista(c, estado, dados), c.alvo);
+    return { id: c.id, nome: c.nome, descricao: c.descricao, icone: c.icone, estrelas: c.estrelas,
+      alvo: c.alvo, valor: valor, ganha: !!quando, quando: quando };
+  });
+}
+
+// As medalhas que acabaram de ser alcançadas. Quem chama paga as estrelas;
+// aqui fica anotado na hora, com a data, para nunca pagar duas vezes.
+function colherConquistas(estado, dados, agora) {
+  if (!estado) return [];
+  virar(estado, agora);
+  const quando = emData(agora).getTime();
+  const novas = [];
+  CONQUISTAS.forEach((c) => {
+    if (estado.conquistas.ganhas[c.id] || medirConquista(c, estado, dados) < c.alvo) return;
+    estado.conquistas.ganhas[c.id] = quando;
+    novas.push({ id: c.id, nome: c.nome, estrelas: c.estrelas });
+  });
+  // Ordem do catálogo, a mesma que sanitizar() devolve: o que está na memória
+  // e o que volta do storage têm a mesma forma.
+  if (novas.length) {
+    const ordem = {};
+    IDS_CONQUISTAS.forEach((id) => { if (estado.conquistas.ganhas[id]) ordem[id] = estado.conquistas.ganhas[id]; });
+    estado.conquistas.ganhas = ordem;
+  }
+  return novas;
+}
+
 const CM_METAS = {
   UNIDADES: UNIDADES.slice(),
   MAX_DIAS: MAX_DIAS,
@@ -389,6 +536,14 @@ const CM_METAS = {
   sortearMissoes: sortearMissoes,
   missoes: missoes,
   colherMissoes: colherMissoes,
+  CONQUISTAS: JSON.parse(JSON.stringify(CONQUISTAS)),
+  DOMINIO_FEITAS: DOMINIO_FEITAS,
+  DOMINIO_TAXA: DOMINIO_TAXA,
+  contarDominios: contarDominios,
+  registrarReforco: registrarReforco,
+  registrarDegrau: registrarDegrau,
+  conquistas: conquistas,
+  colherConquistas: colherConquistas,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = CM_METAS;

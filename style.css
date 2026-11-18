@@ -1316,6 +1316,35 @@ body::after {
 .rc-label  { font-size:var(--fs-apoio); font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
 .rc-val    { font-family:'Fredoka One',cursive; font-size:clamp(22px, 3.4vw, 30px); color:var(--purple); line-height:1.1; overflow-wrap:anywhere; }
 
+/* ===== MEDALHAS =====
+   Mesma família dos cartões de Recordes. Ganha = amarelo das estrelas; bloqueada
+   = borda tracejada e cadeado. O texto da bloqueada NÃO é esmaecido: quem ainda
+   não ganhou é quem mais precisa ler o critério. */
+.btn-medalhas { width:100%; margin-top:clamp(10px, 1.6vh, 14px); }
+.btn-medalhas-conta { font-family:'Nunito',sans-serif; font-weight:800; opacity:0.9; }
+.conq-resumo { font-weight:800; color:var(--text2); margin:0 0 10px; font-size:var(--fs-apoio); text-transform:uppercase; letter-spacing:0.5px; }
+.conq-grade {
+  list-style:none; margin:0; padding:0;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(clamp(150px, 22vw, 200px), 1fr)); gap:var(--gap);
+}
+.conq-card {
+  padding:clamp(10px, 1.8vw, 14px); border-radius:var(--r-sm); text-align:center; min-width:0;
+  border:3px solid transparent; display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.conq-ganha     { background:linear-gradient(135deg,#FFFDE7,#FFF9C4); border-color:#FFD93D; }
+.conq-bloqueada { background:#FAF7FC; border:3px dashed rgba(122,107,138,0.45); }
+.conq-icone {
+  width:clamp(40px, 6vw, 50px); height:clamp(40px, 6vw, 50px); border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:clamp(17px, 2.4vw, 21px);
+}
+.conq-ganha .conq-icone     { background:rgba(255,217,61,0.25); color:#B8860B; border:2px solid var(--yellow); }
+.conq-bloqueada .conq-icone { background:rgba(122,107,138,0.10); color:var(--text2); border:2px solid rgba(122,107,138,0.4); }
+.conq-nome { font-family:'Fredoka One',cursive; font-size:clamp(14px, 1.5vw, 17px); color:var(--purple); margin:2px 0 0; line-height:1.2; }
+.conq-desc { font-size:clamp(12px, 1.2vw, 13.5px); color:var(--text); line-height:1.35; margin:0; }
+.conq-situacao { font-size:var(--fs-apoio); font-weight:800; color:var(--text2); margin:2px 0 0; }
+.conq-ganha .conq-situacao { color:#2E7D3A; }
+.conq-premio { font-size:var(--fs-apoio); font-weight:800; color:var(--purple); margin:0; }
+
 .btn-reset-all {
   width:100%; min-height:var(--alvo); padding:clamp(10px, 1.6vh, 14px) 14px;
   border-radius:var(--r-sm); border:none;
