@@ -870,6 +870,12 @@ body::after {
   box-shadow:0 3px 0 rgba(58, 22, 92, 0.4);
 }
 .qf-continuar:active { translate:0 2px; box-shadow:0 1px 0 rgba(58, 22, 92, 0.4); }
+.qf-acoes { display:flex; flex-wrap:wrap; gap:8px; }
+.qf-ouvir {
+  min-height:var(--alvo); padding:8px 16px; border:2px solid var(--purple); border-radius:var(--r-sm);
+  background:#FFF; color:var(--purple); font:inherit; font-weight:800; font-size:clamp(13px, 1.5vw, 16px); cursor:pointer;
+}
+.qf-ouvir:active { translate:0 2px; }
 
 /* ===== CATCH SCREEN ===== */
 #screenCatch {

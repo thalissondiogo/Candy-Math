@@ -1218,6 +1218,8 @@ function carregarQuiz() {
   if (tag) tag.textContent = selo(q);
   $('quizFeedback').classList.remove('show');
   $('quizContinuar').hidden = true;
+  $('quizOuvir').hidden = true;
+  ultimaExplicacao = '';
   esconderVisual();
 
   const { ordem, certa } = embaralharOpcoes(q.alt);
@@ -1282,7 +1284,10 @@ function handleQuizAnswer(chosen, correct, btn) {
     perdeu();
     const reforco = reforcoDe(G.currentQ);
     if (reforco) filaQuiz.unshift(reforco);
-    showQuizFeedback(fimDeQuizMSG(G.currentQ, reforco));
+    ultimaExplicacao = fimDeQuizMSG(G.currentQ, reforco);
+    showQuizFeedback(ultimaExplicacao);
+    // A explicação pode ser ouvida quantas vezes a criança quiser; nunca toca sozinha.
+    $('quizOuvir').hidden = false;
     updateQuizDots('wrong', G.quizIndex);
     revelou = true;
   }
@@ -1295,10 +1300,20 @@ function handleQuizAnswer(chosen, correct, btn) {
   if (revelou) {
     const botao = $('quizContinuar');
     botao.hidden = false;
-    botao.onclick = () => { botao.hidden = true; botao.onclick = null; avancarQuiz(); };
+    botao.onclick = () => { botao.hidden = true; botao.onclick = null; $('quizOuvir').hidden = true; pararFala(); avancarQuiz(); };
     return;
   }
   setTimeout(avancarQuiz, 1800);
+}
+
+// Narração da explicação do erro: o mesmo texto da tela (resposta certa, o
+// porquê e o conteúdo), na velocidade escolhida em Ajustes.
+let ultimaExplicacao = '';
+function ouvirExplicacao() {
+  if (!ultimaExplicacao) return;
+  const voz = window.CM_NARRACAO;
+  if (voz && voz.podeFalar()) { voz.falar(ultimaExplicacao); return; }
+  showToast('A narração está desligada. Acenda em Voz.');
 }
 
 function avancarQuiz() {
@@ -3492,6 +3507,7 @@ const ACOES_DOS_BOTOES = {
     });
   },
   speakText:     function ()          { speakText(); },
+  ouvirExplicacao: function ()        { ouvirExplicacao(); },
   spinRoulette:  function ()          { spinRoulette(); },
   startMode:     function (modo)      { startMode(modo); },
   toggleSound:   function ()          { toggleSound(); },

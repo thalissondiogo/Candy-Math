@@ -306,8 +306,22 @@ async function main() {
   }
   confere('a revelação espera a leitura: botão Continuar visível e questão parada',
     await avaliar(c, "(function(){var b=document.getElementById('quizContinuar');return !b.hidden && window.__J.vis(b) && G.quizIndex===1;})()"));
+  // Ouvir a explicação: a voz real é trocada por um espião só durante a checagem.
+  const ouvir = await avaliar(c, `(function(){
+    var v=CM_NARRACAO, f=v.falar, p=v.podeFalar, ditos=[];
+    v.falar=function(t){ ditos.push(t); return true; }; v.podeFalar=function(){ return true; };
+    var b=document.getElementById('quizOuvir'), visivel=!b.hidden && window.__J.vis(b), antes=ditos.length;
+    b.click(); b.click();
+    v.falar=f; v.podeFalar=p;
+    return { visivel:visivel, antes:antes, ditos:ditos, tela:window.__J.texto('quizFeedbackMsg') };
+  })()`);
+  confere('na revelação aparece o botão Ouvir a explicação', ouvir.visivel, ouvir);
+  confere('a explicação não é falada sozinha', ouvir.antes === 0, ouvir);
+  confere('o botão fala o mesmo texto da tela e repete quando pedido',
+    ouvir.ditos.length === 2 && ouvir.ditos[0] === ouvir.tela && ouvir.ditos[1] === ouvir.tela && /A resposta certa é/.test(ouvir.tela), ouvir);
   await avaliar(c, "document.getElementById('quizContinuar').click()");
   confere('passou para a terceira pergunta', await esperaQuiz(3));
+  confere('o botão de ouvir some na questão seguinte', await avaliar(c, "document.getElementById('quizOuvir').hidden"));
   if (reforco) confere('a questão de consolidação entrou no lugar da próxima', (await avaliar(c, 'G.currentQ.o')) === q2.o);
 
   // ── 5. a rodada termina dizendo o que foi praticado ──
