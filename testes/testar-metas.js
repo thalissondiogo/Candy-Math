@@ -461,6 +461,13 @@ const hostilR = M.sanitizar({ revisao: { '<b>x</b>': { u: 'numeros', proxima: '2
 confere('storage: só revisões coerentes passam (nome sem tag, data real, intervalo da lista, nada além de 8 dias)',
   JSON.stringify(Object.keys(hostilR.revisao).sort()) === '["Bom","Unidade estranha"]' && hostilR.revisao['Unidade estranha'].u === '', hostilR.revisao);
 confere('save sem revisão abre com a fila vazia', JSON.stringify(M.sanitizar({}, tR).revisao) === '{}');
+const ordem = M.vazio(tR);
+M.registrarRevisao(ordem, 'Zebra', 'dados', false, tR + 864e5);
+M.registrarRevisao(ordem, 'Abelha', 'dados', false, tR);
+M.registrarRevisao(ordem, 'Meio', 'dados', false, tR);
+confere('a fila na memória tem a mesma forma que volta do storage (data, depois nome)',
+  JSON.stringify(ordem.revisao) === JSON.stringify(M.sanitizar(copia(ordem), tR + 864e5).revisao)
+  && Object.keys(ordem.revisao).join() === 'Abelha,Meio,Zebra', Object.keys(ordem.revisao));
 
 // ── 5g. situação de cada conteúdo no mapa de habilidades ────
 const sit = M.situacaoConteudo;

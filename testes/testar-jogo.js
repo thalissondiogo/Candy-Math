@@ -942,7 +942,7 @@ async function main() {
     return { selects:n, pref:G.prefs.nivelPorJogo.truefalse, salvo:((window.__J.save().prefs||{}).nivelPorJogo||{}).truefalse,
       rotulo:sel.closest('label').textContent };
   })()`);
-  confere('Ajustes tem um seletor por jogo (sem duelo e prova)', nj0.selects === 13, nj0);
+  confere('Ajustes tem um seletor por jogo (sem duelo e prova)', nj0.selects === 14, nj0);
   confere('escolher Domínio para o Verdadeiro/Falso fica no perfil', nj0.pref === 4 && nj0.salvo === 4 && /Verdadeiro ou Falso/.test(nj0.rotulo), nj0);
   await avaliar(c, "closeModal('modalAjustes'); G.comoJogarVisto.truefalse = true; startMode('truefalse'); true");
   await espera(400);
@@ -962,6 +962,64 @@ async function main() {
   await avaliar(c, "openModal('modalAjustes'); var s=document.querySelector('#ajNiveis select[data-nivel-jogo=truefalse]'); s.value='0'; s.dispatchEvent(new Event('change',{bubbles:true})); closeModal('modalAjustes'); startMode('truefalse'); true");
   await espera(300);
   confere('Automática volta a seguir o nível', await avaliar(c, '!nivelEhFixo() && G.nivel === 2 && !G.prefs.nivelPorJogo.truefalse'));
+  await avaliar(c, 'goHub(); true');
+  await espera(300);
+
+  // ── 13l. Velha Doce: cada X custa uma conta certa ──
+  await avaliar(c, "escolherNivel(1); startMode('velha'); true");
+  await espera(400);
+  confere('a Velha Doce explica antes da primeira partida', await avaliar(c, "window.__J.aberto('modalTuto')"));
+  await clicar(c, '#tutoAcoes', 'Começar a jogar');
+  await esperarPor(c, "window.__J.tela()==='screenVelha' && document.querySelectorAll('#velhaOpcoes .ans-btn').length>1");
+  const v0 = await avaliar(c, `({ casas:document.querySelectorAll('#velhaTabuleiro .velha-casa').length,
+    travadas:Array.prototype.slice.call(document.querySelectorAll('#velhaTabuleiro .velha-casa')).every(function(b){return b.disabled;}),
+    rotulo:document.querySelector('#velhaTabuleiro .velha-casa').getAttribute('aria-label'), pergunta:window.__J.texto('velhaTexto'),
+    stars:window.__J.jogo() })`);
+  confere('nove casas, todas travadas enquanto a conta não é respondida', v0.casas === 9 && v0.travadas, v0);
+  confere('cada casa se apresenta ao leitor de tela', v0.rotulo === 'Linha 1, coluna 1: vazia', v0.rotulo);
+  const respVelha = (certa) => avaliar(c, `(function(){ var q=G.currentQ; var bs=Array.prototype.slice.call(document.querySelectorAll('#velhaOpcoes .ans-btn')).filter(function(b){return !b.disabled;});
+    var alvo=bs.filter(function(b){ return ${certa} ? b.textContent===String(q.alt[0]) : b.textContent!==String(q.alt[0]); })[0]; alvo.click(); return true; })()`);
+  await respVelha(true);
+  await espera(250);
+  const v1 = await avaliar(c, `({ livres:document.querySelectorAll('#velhaTabuleiro .velha-casa:not(:disabled)').length, fase:velha.fase,
+    foco:document.activeElement.classList.contains('velha-casa'), stars:window.__J.jogo() })`);
+  confere('acertar libera as nove casas e põe o foco nelas', v1.livres === 9 && v1.fase === 'escolher' && v1.foco, v1);
+  confere('acerto na Velha Doce vale 15 estrelas', v1.stars - v0.stars === 15, { v0, v1 });
+  await avaliar(c, "document.querySelectorAll('#velhaTabuleiro .velha-casa')[4].click(); true");
+  await esperarPor(c, "velha.fase==='pergunta'", 4000);
+  const v2 = await avaliar(c, "({ x:velha.casas.filter(function(v){return v==='X';}).length, o:velha.casas.filter(function(v){return v==='O';}).length, centro:velha.casas[4] })");
+  confere('o X entra na casa escolhida e a Juba responde com um O', v2.x === 1 && v2.o === 1 && v2.centro === 'X', v2);
+  await respVelha(false);
+  await espera(250);
+  const v3 = await avaliar(c, `({ continuar:!document.getElementById('velhaContinuar').hidden, msg:window.__J.texto('velhaFeedbackMsg'),
+    travadas:Array.prototype.slice.call(document.querySelectorAll('#velhaTabuleiro .velha-casa')).every(function(b){return b.disabled;}) })`);
+  confere('errar mostra a resposta certa e espera o Continuar, com o tabuleiro travado',
+    v3.continuar && /^A resposta certa é .+A vez passa para a Juba\.$/.test(v3.msg) && v3.travadas, v3);
+  await avaliar(c, "document.getElementById('velhaContinuar').click(); true");
+  await espera(300);
+  confere('depois do Continuar a Juba joga e volta a sua vez', await avaliar(c, "velha.casas.filter(function(v){return v==='O';}).length===2 && velha.fase==='pergunta'"));
+  const ia = await avaliar(c, `({
+    ganha:escolherJogadaDaJuba(['O','O','','X','X','','','',''], 3),
+    bloqueia:escolherJogadaDaJuba(['X','X','','O','','','','',''], 3),
+    centro:escolherJogadaDaJuba(['X','','','','','','','',''], 4),
+    base:escolherJogadaDaJuba(['X','X','','O','','','','',''], 1, function(){ return 0.99; }) })`);
+  confere('no Desafio a Juba fecha a própria linha quando pode', ia.ganha === 2, ia);
+  confere('no Desafio a Juba bloqueia a sua linha', ia.bloqueia === 2, ia);
+  confere('no Domínio a Juba toma o centro livre', ia.centro === 4, ia);
+  confere('no Base a Juba joga ao acaso (não bloqueia de propósito)', ia.base === 8, ia);
+  // Até o fim: acertar e jogar na primeira casa livre, sem passar de 5 perguntas.
+  for (let i = 0; i < 6 && !(await avaliar(c, "velha.fase==='fim'")); i++) {
+    await respVelha(true);
+    await espera(200);
+    await avaliar(c, "var l=document.querySelector('#velhaTabuleiro .velha-casa:not(:disabled)'); if(l) l.click(); true");
+    await esperarPor(c, "velha.fase==='pergunta'||velha.fase==='fim'", 4000);
+  }
+  confere('a partida termina com vitória, derrota ou empate', await avaliar(c, "velha.fase==='fim' && !!vencedorDaVelha(velha.casas)"));
+  confere('a partida fecha a rodada com o resumo', await esperaResumo());
+  confere('a Velha Doce usa no máximo 5 perguntas por partida', (await avaliar(c, 'G.roundTotal')) <= 5);
+  confere('o resumo lista o que foi praticado', /^Você praticou: /.test((await texto(c, 'luConteudo')) || ''));
+  await clicar(c, '#modalLevelUp', 'Continuar');
+  await espera(300);
   await avaliar(c, 'goHub(); true');
   await espera(300);
 

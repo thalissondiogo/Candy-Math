@@ -244,7 +244,7 @@
             <h3 class="hub-cat-name">Raciocínio Doce</h3>
             <p class="hub-cat-desc">Monte, ordene e descubra o padrão!</p>
           </div>
-          <span class="hub-cat-count">4 jogos</span>
+          <span class="hub-cat-count">5 jogos</span>
         </div>
 
         <div class="mode-grid">
@@ -275,6 +275,13 @@
             <div class="mc-name">Memória Doce</div>
             <div class="mc-desc">Ligue cada conta ao resultado!</div>
             <div class="mc-stars"><i class="fa-solid fa-star"></i> +20 por mesa</div>
+          </div>
+          <div class="mode-card mc-velha" data-acao="startMode" data-args='["velha"]'>
+            <div class="mc-glow"></div>
+            <div class="mc-icon"><i class="fa-solid fa-hashtag"></i></div>
+            <div class="mc-name">Velha Doce</div>
+            <div class="mc-desc">Acerte a conta para jogar contra a Juba!</div>
+            <div class="mc-stars"><i class="fa-solid fa-star"></i> +15 por acerto</div>
           </div>
         </div>
       </section>
@@ -579,6 +586,31 @@
     <div class="seq-box" id="seqBox">2, 4, 6, <span class="seq-hole">?</span></div>
     <div class="seq-options" id="seqOptions"></div>
     <div class="game-feedback" id="seqFeedback"><span class="qf-onca" data-mascote="rosto"></span><div class="qf-bubble" id="seqFeedbackMsg">Boa!</div></div>
+  </div>
+
+  <!-- Velha Doce: jogo da velha em que cada jogada custa uma conta certa -->
+  <div id="screenVelha" class="screen">
+    <div class="game-top-bar">
+      <button class="btn-back" data-acao="goHub"><i class="fa-solid fa-arrow-left"></i> Voltar</button>
+      <div class="gtb-title"><i class="fa-solid fa-hashtag"></i> Velha Doce</div>
+      <div class="gtb-info"><span id="velhaProg">Sua vez</span> · <i class="fa-solid fa-star"></i><span id="velhaStarsBar">0</span></div>
+    </div>
+    <div class="game-tag" id="velhaTag"></div>
+    <div class="velha-area">
+      <div class="velha-pergunta">
+        <p class="velha-txt" id="velhaTexto"></p>
+        <div class="quiz-answers velha-opcoes" id="velhaOpcoes"></div>
+      </div>
+      <div class="velha-tabuleiro" id="velhaTabuleiro" role="group" aria-label="Tabuleiro do jogo da velha: você é o X, a Juba é o O"></div>
+    </div>
+    <p class="velha-status" id="velhaStatus" aria-live="polite"></p>
+    <div class="quiz-feedback" id="velhaFeedback">
+      <span class="qf-onca" data-mascote="rosto"></span>
+      <div class="qf-fala">
+        <div class="qf-bubble" id="velhaFeedbackMsg">Boa!</div>
+        <button class="qf-continuar" id="velhaContinuar" type="button" hidden>Continuar</button>
+      </div>
+    </div>
   </div>
 
   <!-- 9. Balance -->

@@ -80,7 +80,7 @@ const QTD_POR_RODADA = 5;
 // Jogos de esforço longo (grade completa, mesa de cartas) têm rodada curta.
 const RODADA_CURTA = { puzzle: 3, memory: 3 };
 const PONTOS = {
-  quiz: 10, truefalse: 10, operator: 10, balloon: 15, fishing: 15,
+  quiz: 10, truefalse: 10, operator: 10, balloon: 15, fishing: 15, velha: 15,
   sequence: 15, sort: 20, catch: 20, whack: 20, balance: 20,
   memory: 20, puzzle: 30,
 };
@@ -566,6 +566,9 @@ const DESCRICAO_NIVEL = [
 ];
 
 function totalDaRodada(modo) {
+  // Na Velha Doce a partida acaba quando alguém fecha a linha: a rodada tem
+  // tantas perguntas quantas a criança respondeu.
+  if (modo === 'velha') return Math.max(G.roundTotal, 1);
   return RODADA_CURTA[modo] || QTD_POR_RODADA;
 }
 
@@ -1271,6 +1274,7 @@ const TELA_DO_JOGO = {
   balloon: 'screenBalloon', fishing: 'screenFishing',    sort: 'screenSort',
   whack: 'screenWhack',     sequence: 'screenSequence',  balance: 'screenBalance',
   roulette: 'screenRoulette', duelo: 'screenDuelo',      prova: 'screenProva',
+  velha: 'screenVelha',
 };
 const INICIAR_JOGO = {
   quiz: iniciarQuiz,        catch: iniciarChuva,         puzzle: iniciarCruzadinha,
@@ -1278,6 +1282,7 @@ const INICIAR_JOGO = {
   balloon: iniciarBaloes,   fishing: iniciarPescaria,    sort: iniciarOrdenar,
   whack: iniciarToupeira,   sequence: iniciarSequencia,  balance: iniciarBalanca,
   roulette: iniciarRoleta,  duelo: iniciarDuelo,        prova: iniciarProva,
+  velha: iniciarVelha,
 };
 
 function startMode(mode) {
@@ -2810,6 +2815,165 @@ function finishRound(mode) {
   spawnLevelUpConfetti();
   playSound('levelup');
 }
+
+// ──────────────────────────────────────────────────
+// 13b. VELHA DOCE — jogo da velha: cada X custa uma conta certa
+//      A criança responde; acertou, escolhe a casa. Errou, lê a explicação e
+//      a vez passa. A Juba joga depois: ao acaso no Base, às vezes bloqueia no
+//      Prática, bloqueia e ataca no Desafio e no Domínio.
+// ──────────────────────────────────────────────────
+const LINHAS_VELHA = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+let velha = { casas: [], fase: 'fim' };
+
+function iniciarVelha() {
+  iniciarRodada();
+  velha = { casas: ['', '', '', '', '', '', '', '', ''], fase: 'pergunta' };
+  $('velhaFeedback').classList.remove('show');
+  pintarTabuleiro();
+  perguntaDaVelha();
+}
+
+function vencedorDaVelha(casas) {
+  for (const l of LINHAS_VELHA) {
+    if (casas[l[0]] && casas[l[0]] === casas[l[1]] && casas[l[1]] === casas[l[2]]) return casas[l[0]];
+  }
+  return casas.every(Boolean) ? 'empate' : null;
+}
+
+function pintarTabuleiro() {
+  const tab = $('velhaTabuleiro');
+  tab.textContent = '';
+  velha.casas.forEach((v, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'velha-casa' + (v === 'X' ? ' velha-x' : v === 'O' ? ' velha-o' : '');
+    b.textContent = v;
+    b.disabled = !(velha.fase === 'escolher' && !v);
+    b.setAttribute('aria-label', 'Linha ' + (Math.floor(i / 3) + 1) + ', coluna ' + (i % 3 + 1) + ': ' +
+      (v === 'X' ? 'seu X' : v === 'O' ? 'O da Juba' : 'vazia'));
+    b.addEventListener('click', () => jogarNaCasa(i));
+    tab.appendChild(b);
+  });
+}
+
+function perguntaDaVelha() {
+  const q = proximaPergunta();
+  G.currentQ = q;
+  velha.fase = 'pergunta';
+  $('velhaProg').textContent = 'Sua vez';
+  atualizarBarra('velhaStarsBar');
+  $('velhaTag').textContent = selo(q);
+  $('velhaTexto').textContent = q.txt;
+  $('velhaStatus').textContent = 'Sua vez: acerte a conta para colocar um X.';
+  $('velhaContinuar').hidden = true;
+  const { ordem, certa } = embaralharOpcoes(q.alt);
+  const caixa = $('velhaOpcoes');
+  caixa.textContent = '';
+  ordem.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.className = 'ans-btn';
+    b.textContent = opt;
+    b.addEventListener('click', () => responderVelha(i, certa, b));
+    caixa.appendChild(b);
+  });
+  pintarTabuleiro();
+}
+
+function responderVelha(escolha, certa, btn) {
+  if (velha.fase !== 'pergunta') return;
+  const btns = Array.prototype.slice.call(document.querySelectorAll('#velhaOpcoes .ans-btn'));
+  btns.forEach((b) => (b.disabled = true));
+  if (escolha === certa) {
+    btn.classList.add('correct');
+    ganhou('velha');
+    atualizarBarra('velhaStarsBar');
+    velha.fase = 'escolher';
+    showVelhaFeedback(pick(MSGS.correct) + ' Escolha a casa do seu X.');
+    $('velhaStatus').textContent = 'Acertou! Toque numa casa vazia para colocar o seu X.';
+    pintarTabuleiro();
+    const livre = document.querySelector('#velhaTabuleiro .velha-casa:not(:disabled)');
+    if (livre) livre.focus({ preventScroll: true });
+    saveState();
+    return;
+  }
+  btn.classList.add('wrong');
+  btns[certa].classList.add('reveal');
+  perdeu();
+  atualizarBarra('velhaStarsBar');
+  velha.fase = 'leitura';
+  const exp = explicacaoDe(G.currentQ);
+  showVelhaFeedback('A resposta certa é ' + G.currentQ.alt[0] + '. ' + (exp ? exp + ' ' : '') + 'A vez passa para a Juba.');
+  $('velhaStatus').textContent = 'Leia a explicação e toque em Continuar.';
+  saveState();
+  const botao = $('velhaContinuar');
+  botao.hidden = false;
+  botao.onclick = () => { botao.hidden = true; botao.onclick = null; jogadaDaJuba(); };
+}
+
+function jogarNaCasa(i) {
+  if (velha.fase !== 'escolher' || velha.casas[i]) return;
+  velha.casas[i] = 'X';
+  velha.fase = 'juba';
+  pintarTabuleiro();
+  if (fimDaVelha()) return;
+  $('velhaStatus').textContent = 'Vez da Juba…';
+  $('velhaProg').textContent = 'Vez da Juba';
+  setTimeout(jogadaDaJuba, 700);
+}
+
+// Uma casa que completa a linha de quem joga, se existir.
+function casaQueFecha(casas, marca) {
+  for (const l of LINHAS_VELHA) {
+    const marcas = l.filter((k) => casas[k] === marca).length;
+    const vazia = l.find((k) => !casas[k]);
+    if (marcas === 2 && vazia !== undefined) return vazia;
+  }
+  return -1;
+}
+
+// A jogada da Juba muda com o nível: é aqui que a partida fica mais difícil.
+function escolherJogadaDaJuba(casas, nivel, sorte) {
+  const livres = casas.map((v, k) => (v ? -1 : k)).filter((k) => k >= 0);
+  const r = typeof sorte === 'function' ? sorte : Math.random;
+  if (nivel >= 3) {
+    const ganha = casaQueFecha(casas, 'O');
+    if (ganha >= 0) return ganha;
+  }
+  if (nivel >= 3 || (nivel === 2 && r() < 0.5)) {
+    const bloqueia = casaQueFecha(casas, 'X');
+    if (bloqueia >= 0) return bloqueia;
+  }
+  if (nivel >= 3 && !casas[4]) return 4;
+  return livres[Math.floor(r() * livres.length)];
+}
+
+function jogadaDaJuba() {
+  if (velha.fase === 'fim' || !$('screenVelha').classList.contains('active')) return;
+  const k = escolherJogadaDaJuba(velha.casas, G.nivel);
+  if (k !== undefined) velha.casas[k] = 'O';
+  pintarTabuleiro();
+  if (fimDaVelha()) return;
+  perguntaDaVelha();
+}
+
+function fimDaVelha() {
+  const v = vencedorDaVelha(velha.casas);
+  if (!v) return false;
+  velha.fase = 'fim';
+  pintarTabuleiro();
+  document.querySelectorAll('#velhaOpcoes .ans-btn').forEach((b) => (b.disabled = true));
+  const texto = v === 'X' ? 'Você fechou a linha e venceu a Juba!'
+    : v === 'O' ? 'A Juba fechou a linha desta vez. Na próxima, de olho nas casas dela!'
+    : 'Deu velha: ninguém fechou a linha.';
+  $('velhaStatus').textContent = texto;
+  $('velhaProg').textContent = v === 'X' ? 'Vitória' : v === 'O' ? 'Juba venceu' : 'Empate';
+  showVelhaFeedback(texto);
+  saveState();
+  setTimeout(() => { if ($('screenVelha').classList.contains('active')) finishRound('velha'); }, 1600);
+  return true;
+}
+
+function showVelhaFeedback(msg) { $('velhaFeedbackMsg').textContent = msg; $('velhaFeedback').classList.add('show'); }
 
 // ──────────────────────────────────────────────────
 // 14. SHOP / WARDROBE

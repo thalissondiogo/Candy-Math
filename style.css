@@ -600,6 +600,7 @@ body::after {
 .mc-operator { background:linear-gradient(145deg,#FFD166,#E5BC5C); box-shadow:0 6px 24px rgba(255,209,102,0.45); }
 .mc-balloon { background:linear-gradient(145deg,#118AB2,#0D6E8E); box-shadow:0 6px 24px rgba(17,138,178,0.45); }
 .mc-fishing { background:linear-gradient(145deg,#073B4C,#052C39); box-shadow:0 6px 24px rgba(7,59,76,0.45); }
+.mc-velha { background:linear-gradient(145deg,#2A8FE0,#1E4FA8); box-shadow:0 6px 24px rgba(42,143,224,0.45); }
 .mc-sort { background:linear-gradient(145deg,#F77F00,#D66E00); box-shadow:0 6px 24px rgba(247,127,0,0.45); }
 .mc-whack { background:linear-gradient(145deg,#8D5A97,#72487A); box-shadow:0 6px 24px rgba(141,90,151,0.45); }
 .mc-sequence { background:linear-gradient(145deg,#3A86FF,#2A65CC); box-shadow:0 6px 24px rgba(58,134,255,0.45); }
@@ -1346,6 +1347,24 @@ body.pref-calmo .lu-onca, body.pref-calmo .splash-onca-icon { animation:none; }
 .mapa-praticando { border-left-color:var(--purple); } .mapa-praticando .mapa-sit { color:var(--purple); }
 .mapa-revisar { border-left-color:var(--orange); } .mapa-revisar .mapa-sit { color:#B4530A; }
 .btn-mapa { background:linear-gradient(135deg,#23877B,#1B6B62); }   /* branco sobre esse verde-água: contraste de 4,3:1 ou mais */
+/* ===== VELHA DOCE ===== */
+#screenVelha { --tela: var(--blue); background: var(--malha-acucar), linear-gradient(180deg, #EEF6FF 0%, #DCEBFF 100%); overflow-y: auto; }
+.velha-area { display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start; gap:clamp(12px, 2.4vw, 28px);
+  width:100%; max-width:var(--max-linha); margin:0 auto; padding:clamp(8px, 1.6vh, 16px) var(--pad); }
+.velha-pergunta { flex:1 1 300px; min-width:0; max-width:var(--largura-leitura); }
+.velha-txt { background:#fff; border:3px solid var(--blue); border-radius:var(--r); padding:clamp(10px, 2vw, 18px);
+  margin:0 0 10px; font-size:clamp(16px, 2vw, 22px); font-weight:700; color:var(--text); line-height:1.35; }
+.velha-opcoes { margin:0; }
+.velha-tabuleiro { flex:0 0 auto; display:grid; grid-template-columns:repeat(3, clamp(64px, 22vw, 96px)); gap:8px;
+  padding:10px; background:#fff; border:3px solid var(--blue); border-radius:var(--r); }
+.velha-casa { aspect-ratio:1; border-radius:var(--r-sm); border:3px solid rgba(42,143,224,0.35); background:#F4F9FF;
+  font-family:'Fredoka One',cursive; font-size:clamp(28px, 7vw, 44px); line-height:1; color:var(--text); cursor:pointer; }
+.velha-casa:disabled { cursor:default; }
+.velha-casa:not(:disabled) { border-style:dashed; border-color:var(--blue); background:#fff; }
+.velha-casa:focus-visible { outline:3px solid var(--purple); outline-offset:2px; }
+.velha-x { color:#1E4FA8; }
+.velha-o { color:#B4530A; }
+.velha-status { text-align:center; font-weight:800; color:var(--text); margin:4px var(--pad) 8px; font-size:clamp(14px, 1.5vw, 17px); min-height:1.4em; }
 .ajustes-box { border-top:5px solid var(--purple); border-radius:var(--r); }
 .aj-nota { margin:0 0 12px; font-size:var(--fs-apoio); color:var(--text2); line-height:1.4; }
 .aj-grupo { border:2px solid rgba(155,93,229,0.25); border-radius:var(--r-sm); padding:10px 12px 12px; margin:0 0 12px; }

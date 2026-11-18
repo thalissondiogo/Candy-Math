@@ -200,6 +200,17 @@ function diaMais(chave, dias) {
   const [a, m, d] = chave.split('-').map(Number);
   return chaveDe(new Date(a, m - 1, d + dias, 12));
 }
+// Ordem canônica da fila (data, depois nome): a mesma na memória e no que volta
+// do storage, para que o save gravado e o recarregado tenham a mesma forma.
+function antesNaFila(x, y) {
+  if (x[1].proxima !== y[1].proxima) return x[1].proxima < y[1].proxima ? -1 : 1;
+  return x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0;
+}
+function ordenarFila(r) {
+  const out = {};
+  Object.keys(r).map((n) => [n, r[n]]).sort(antesNaFila).forEach(([n, v]) => { out[n] = v; });
+  return out;
+}
 function revisaoSanit(r, hoje) {
   const out = {};
   if (!r || typeof r !== 'object' || Array.isArray(r)) return out;
@@ -207,7 +218,7 @@ function revisaoSanit(r, hoje) {
     .map((nome) => [nome, r[nome]])
     .filter(([, v]) => v && typeof v === 'object' && diaValido(v.proxima) && INTERVALOS.indexOf(v.intervalo) >= 0
       && Number.isInteger(v.acertos) && v.acertos >= 0 && v.acertos < ACERTOS_PARA_SAIR && diasEntre(hoje, v.proxima) <= 8)
-    .sort((x, y) => (x[1].proxima < y[1].proxima ? -1 : 1))
+    .sort(antesNaFila)
     .slice(0, MAX_REVISAO)
     .forEach(([nome, v]) => { out[nome] = { u: UNIDADES.indexOf(v.u) >= 0 ? v.u : '', proxima: v.proxima, intervalo: v.intervalo, acertos: v.acertos }; });
   return out;
@@ -226,6 +237,7 @@ function registrarRevisao(estado, nome, unidade, acertou, agora) {
       const longe = nomes.filter((n) => n !== nome).sort((x, y) => (r[x].proxima > r[y].proxima ? -1 : 1))[0];
       delete r[longe];
     }
+    estado.revisao = ordenarFila(r);
     return estado;
   }
   if (!atual || atual.proxima > hoje) return estado;
@@ -233,6 +245,7 @@ function registrarRevisao(estado, nome, unidade, acertou, agora) {
   if (acertos >= ACERTOS_PARA_SAIR) { delete r[nome]; return estado; }
   const intervalo = INTERVALOS[Math.min(INTERVALOS.indexOf(atual.intervalo) + 1, INTERVALOS.length - 1)];
   r[nome] = { u: atual.u, proxima: diaMais(hoje, intervalo), intervalo: intervalo, acertos: acertos };
+  estado.revisao = ordenarFila(r);
   return estado;
 }
 // Conteúdos com revisão vencida, do que venceu há mais tempo para o mais novo.

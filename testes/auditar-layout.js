@@ -42,7 +42,7 @@ const MEDIDAS = [
   [700, 1000], [800, 420], [740, 360], [768, 1024], [1024, 768], [1440, 900],
 ];
 const TELAS = ['splash', 'entrada', 'hub', 'quiz', 'catch', 'puzzle', 'truefalse', 'memory', 'operator',
-  'balloon', 'fishing', 'sort', 'whack', 'sequence', 'balance', 'roulette',
+  'balloon', 'fishing', 'sort', 'whack', 'sequence', 'velha', 'balance', 'roulette',
   'shop', 'records', 'medalhas', 'pais', 'apagar', 'levelup'];
 const FOTOS = {
   'hub-1440x900': 1, 'quiz-390x844': 1, 'puzzle-320x640': 1, 'pais-360x800': 1, 'shop-320x640': 1,

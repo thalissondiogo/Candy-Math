@@ -76,6 +76,18 @@ const TUTORIAIS = {
     erro: 'No primeiro erro do giro aparece uma pista e você tenta de novo. No segundo, a resposta certa é revelada e aquele giro não leva prêmio. O giro seguinte vem limpo.',
     estrelas: 'De 10 a 40 por giro acertado.',
   },
+  velha: {
+    nome: 'Velha Doce', icone: 'fa-hashtag',
+    treina: 'resolver a conta com calma e, depois, pensar onde jogar: fechar a sua linha ou atrapalhar a da Juba.',
+    passos: [
+      'Você é o X e a Juba é o O, num jogo da velha de 3 por 3.',
+      'Na sua vez aparece uma pergunta. Acertou? Toque na casa onde quer o seu X.',
+      'Depois a Juba joga. Ganha quem fizer uma linha, coluna ou diagonal primeiro.',
+      'Nos níveis mais altos a Juba presta mais atenção: ela bloqueia e ataca.',
+    ],
+    erro: 'Errou a conta? A resposta certa aparece com a explicação, você lê com calma e a vez passa para a Juba. Ninguém perde estrela por errar.',
+    estrelas: '+15 por conta certa.',
+  },
   puzzle: {
     nome: 'Cruzadinha Numérica', icone: 'fa-puzzle-piece',
     treina: 'manter a cabeça em várias somas ao mesmo tempo e conferir o que já colocou.',
