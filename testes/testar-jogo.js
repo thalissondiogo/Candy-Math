@@ -932,6 +932,39 @@ async function main() {
   confere('o mapa é organizado por unidade temática e recebe o foco', mapa.unidades >= 3 && mapa.foco, mapa);
   await avaliar(c, "closeAllModals(); true");
 
+  // ── 13k. dificuldade por jogo: fixa só aquele jogo, sem mexer no nível ──
+  await avaliar(c, "goHub(); escolherNivel(2); openModal('modalAjustes'); true");
+  await espera(300);
+  const nj0 = await avaliar(c, `(function(){
+    var sel=document.querySelector('#ajNiveis select[data-nivel-jogo=truefalse]');
+    var n=document.querySelectorAll('#ajNiveis select').length;
+    sel.value='4'; sel.dispatchEvent(new Event('change', {bubbles:true}));
+    return { selects:n, pref:G.prefs.nivelPorJogo.truefalse, salvo:((window.__J.save().prefs||{}).nivelPorJogo||{}).truefalse,
+      rotulo:sel.closest('label').textContent };
+  })()`);
+  confere('Ajustes tem um seletor por jogo (sem duelo e prova)', nj0.selects === 13, nj0);
+  confere('escolher Domínio para o Verdadeiro/Falso fica no perfil', nj0.pref === 4 && nj0.salvo === 4 && /Verdadeiro ou Falso/.test(nj0.rotulo), nj0);
+  await avaliar(c, "closeModal('modalAjustes'); G.comoJogarVisto.truefalse = true; startMode('truefalse'); true");
+  await espera(400);
+  const nj1 = await avaliar(c, "({ nivel:G.nivel, salvo:window.__J.save().nivel, fixo:nivelEhFixo() })");
+  confere('a rodada do Verdadeiro/Falso roda no Domínio', nj1.nivel === 4 && nj1.fixo, nj1);
+  await avaliar(c, 'saveState(); true');
+  confere('gravar no meio da rodada guarda o nível de verdade (Prática)', (await avaliar(c, 'window.__J.save().nivel')) === 2);
+  const degrauAntes = await avaliar(c, 'G.metas.conquistas.degrau');
+  await avaliar(c, "G.roundCorrect = 5; finishRound('truefalse'); true");
+  await espera(400);
+  const nj2 = await avaliar(c, "({ texto:window.__J.texto('luPhaseText'), degrau:G.metas.conquistas.degrau })");
+  confere('o resumo explica que a dificuldade está fixa', /dificuldade fixa em Domínio/.test(nj2.texto || ''), nj2.texto);
+  confere('rodada perfeita com nível fixo não mexe no degrau', nj2.degrau === degrauAntes, nj2);
+  await avaliar(c, "closeModal('modalLevelUp'); goHub(); true");
+  await espera(300);
+  confere('voltar ao hub devolve o nível de verdade', (await avaliar(c, "G.nivel === 2 && window.__J.texto('hubNivel') === 'Prática'")));
+  await avaliar(c, "openModal('modalAjustes'); var s=document.querySelector('#ajNiveis select[data-nivel-jogo=truefalse]'); s.value='0'; s.dispatchEvent(new Event('change',{bubbles:true})); closeModal('modalAjustes'); startMode('truefalse'); true");
+  await espera(300);
+  confere('Automática volta a seguir o nível', await avaliar(c, '!nivelEhFixo() && G.nivel === 2 && !G.prefs.nivelPorJogo.truefalse'));
+  await avaliar(c, 'goHub(); true');
+  await espera(300);
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);

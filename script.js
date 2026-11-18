@@ -277,9 +277,33 @@ function aplicarPreferencias() {
   if (window.CM_NARRACAO && CM_NARRACAO.definirVelocidade) CM_NARRACAO.definirVelocidade(p.vozVelocidade);
   pintarAjustes();
 }
+// Um seletor por jogo, montado do catálogo de jogos (TELA_DO_JOGO) com o nome
+// do como-jogar: jogo novo aparece sozinho. Duelo e prova ficam de fora.
+function montarNiveisPorJogo() {
+  const caixa = $('ajNiveis');
+  if (!caixa || caixa.childElementCount) return;
+  Object.keys(TELA_DO_JOGO).filter((m) => m !== 'duelo' && m !== 'prova').forEach((modo) => {
+    const nome = (window.CM_TUTORIAL && CM_TUTORIAL.textos[modo] && CM_TUTORIAL.textos[modo].nome) || modo;
+    const rotulo = document.createElement('label');
+    rotulo.className = 'aj-nivel';
+    const span = document.createElement('span');
+    span.textContent = nome;
+    const sel = document.createElement('select');
+    sel.setAttribute('data-nivel-jogo', modo);
+    [['0', 'Automática'], ['1', C.NIVEIS[0]], ['2', C.NIVEIS[1]], ['3', C.NIVEIS[2]], ['4', C.NIVEIS[3]]].forEach(([v, t]) => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = t;
+      sel.appendChild(o);
+    });
+    rotulo.appendChild(span);
+    rotulo.appendChild(sel);
+    caixa.appendChild(rotulo);
+  });
+}
 function pintarAjustes() {
   const caixa = $('modalAjustes');
   if (!caixa) return;
+  montarNiveisPorJogo();
   caixa.querySelectorAll('input[data-pref]').forEach((inp) => {
     const k = inp.getAttribute('data-pref');
     if (inp.type === 'checkbox') inp.checked = !!G.prefs[k];
@@ -962,6 +986,7 @@ function entrarNoHub() {
 }
 
 function irParaEntrada() {
+  restaurarNivel();
   clearAllGameIntervals();
   closeAllModals();
   if (window.CM_CONTAS) CM_CONTAS.mostrar(CM_CONTAS.ativo() ? 'perfis' : undefined);
@@ -972,6 +997,7 @@ function irParaEntrada() {
 // relido da chave do perfil novo. Sem isto, as estrelas de um irmão ficariam
 // na tela do outro até a primeira gravação — e aí se misturariam de verdade.
 function trocarEstudante(perfil) {
+  nivelGlobal = null;
   clearAllGameIntervals();
   closeAllModals();
   Object.assign(G, {
@@ -1269,11 +1295,31 @@ function startMode(mode) {
   clearAllGameIntervals();
   clearTimeout(idleTimer);
   G.currentMode = mode;
+  aplicarNivelDoJogo(mode);
   INICIAR_JOGO[mode]();
   showScreen(TELA_DO_JOGO[mode]);
 }
 
+// Dificuldade escolhida para um jogo (Ajustes): vale só na rodada desse jogo.
+// O nível adaptativo de verdade fica guardado em nivelGlobal e volta ao sair;
+// com nível fixo a rodada não sobe nem desce o degrau, nem conta para medalha.
+let nivelGlobal = null;
+function aplicarNivelDoJogo(mode) {
+  restaurarNivel();
+  const fixo = G.prefs && G.prefs.nivelPorJogo[mode];
+  if (!fixo) return;
+  nivelGlobal = G.nivel;
+  G.nivel = fixo;
+}
+function restaurarNivel() {
+  if (nivelGlobal === null) return;
+  G.nivel = nivelGlobal;
+  nivelGlobal = null;
+}
+function nivelEhFixo() { return nivelGlobal !== null; }
+
 function goHub() {
+  restaurarNivel();
   clearAllGameIntervals();
   // O duelo tem relógio próprio: se ele continuar pulsando depois de sair da
   // tela, o tempo do jogador segue correndo sem ninguém olhando.
@@ -2732,9 +2778,11 @@ function finishRound(mode) {
   const ganho = G.roundStars + bonus;
   const nivelAnterior = G.nivel;
 
-  if (feitos === total && G.nivel < 4) G.nivel++;
-  else if (feitos <= 1 && G.nivel > 1) G.nivel--;
-  if (G.nivel > nivelAnterior) CM_METAS.registrarDegrau(G.metas, G.nivel);
+  if (!nivelEhFixo()) {
+    if (feitos === total && G.nivel < 4) G.nivel++;
+    else if (feitos <= 1 && G.nivel > 1) G.nivel--;
+    if (G.nivel > nivelAnterior) CM_METAS.registrarDegrau(G.metas, G.nivel);
+  }
 
   G.stars += bonus;
   CM_METAS.registrarRodada(G.metas, { acertos: feitos, total: total }, Date.now());
@@ -2743,7 +2791,9 @@ function finishRound(mode) {
 
   document.querySelector('.lu-title').textContent =
     feitos >= 3 ? 'Rodada concluída!' : 'Boa — vamos de novo!';
-  $('luPhaseText').textContent = nivelAnterior === G.nivel
+  $('luPhaseText').textContent = nivelEhFixo()
+    ? 'Este jogo está com a dificuldade fixa em ' + textoNivel() + ' (Ajustes). O seu nível no resto do jogo continua o mesmo.'
+    : nivelAnterior === G.nivel
     ? 'Fica no ' + textoNivel() + ': ' + DESCRICAO_NIVEL[G.nivel - 1].split('.')[0] + '.'
     : G.nivel > nivelAnterior
       ? 'Você acertou a rodada inteira, então o próximo degrau vem um pouco mais difícil: ' +
@@ -3431,7 +3481,8 @@ function gravarLocal() {
     localStorage.setItem(chaveAtual(), JSON.stringify({
       stars:        G.stars,
       ano:          G.ano,
-      nivel:        G.nivel,
+      // Gravar no meio de uma rodada de nível fixo guarda o nível de verdade.
+      nivel:        nivelGlobal !== null ? nivelGlobal : G.nivel,
       totalCorrect: G.totalCorrect,
       streak:       G.streak,
       bestStreak:   G.bestStreak,
