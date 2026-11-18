@@ -1023,6 +1023,69 @@ async function main() {
   await avaliar(c, 'goHub(); true');
   await espera(300);
 
+  // ── 13m. duelo: Juntos, regra do Jogador 1 e desafio por código ──
+  await avaliar(c, "startMode('duelo'); true");
+  await espera(400);
+  if (await avaliar(c, "window.__J.aberto('modalTuto')")) await clicar(c, '#tutoAcoes', 'Montar a partida');
+  await esperarPor(c, "window.__J.tela()==='screenDuelo' && !document.getElementById('dueloSetup').hidden");
+  await avaliar(c, "document.querySelector('#dueloDens [data-d=\"20\"]').click(); document.querySelector('#dueloModoChips [data-modo=coop]').click(); true");
+  const coop0 = await avaliar(c, "({ modo:CM_DUELO.detalhes().modo, nota:window.__J.texto('dueloNotaCoop'), visivel:!document.getElementById('dueloNotaCoop').hidden, nomes:!document.getElementById('dueloNomes').hidden })");
+  confere('o chip Juntos escolhe o modo cooperativo e explica a meta', coop0.modo === 'coop' && coop0.visivel && /no máximo 4 toques errados/.test(coop0.nota) && coop0.nomes, coop0);
+  const somaHist = "Object.keys(G.hist).reduce(function(t,n){return t+G.hist[n].feitas;},0)";
+  const acertarPeca = () => avaliar(c, `(function(){ var P=CM_DUELO.detalhes(); var alvo=P.pecas.filter(function(p){return p.vivo && p.texto===P.conta.resposta;})[0];
+    alvo.el.click(); return true; })()`);
+  const pronto = () => avaliar(c, "document.getElementById('dueloPronto').click(); true");
+  await avaliar(c, "document.getElementById('dueloComecar').click(); true");
+  await espera(300);
+  const antesDuelo = await avaliar(c, `({ hist:${somaHist}, jogo:window.__J.jogo() })`);
+  await pronto(); await espera(150); await acertarPeca(); await espera(200);
+  const d1 = await avaliar(c, `({ hist:${somaHist}, vez:CM_DUELO.detalhes().vez })`);
+  confere('o acerto do Jogador 1 (dono do perfil) entra no histórico', d1.hist === antesDuelo.hist + 1 && d1.vez === 1, { antesDuelo, d1 });
+  await pronto(); await espera(150); await acertarPeca(); await espera(200);
+  const d2 = await avaliar(c, `({ hist:${somaHist}, ach:CM_DUELO.detalhes().achados.slice() })`);
+  confere('o acerto do Jogador 2 não entra no histórico do perfil', d2.hist === d1.hist && d2.ach[1] === 1, { d1, d2 });
+  for (let i = 0; i < 25 && (await avaliar(c, 'CM_DUELO.detalhes().fila.length')) > 0; i++) {
+    await pronto(); await espera(120); await acertarPeca(); await espera(150);
+  }
+  await espera(400);
+  const coopFim = await avaliar(c, `({ aberto:window.__J.aberto('modalDuelo'), titulo:(document.querySelector('#dueloFim .duelo-fim-titulo')||{}).textContent,
+    jogo:window.__J.jogo(), registro:G.duelos.recorde.slice(-1)[0] })`);
+  confere('limpar a tela sem erros cumpre a meta da equipe', coopFim.aberto && coopFim.titulo === 'Meta da equipe cumprida!', coopFim);
+  confere('no Juntos as estrelas são 1 por número mais o bônus da equipe (20 + 15)', coopFim.jogo - antesDuelo.jogo === 35, { antes: antesDuelo.jogo, depois: coopFim.jogo });
+  confere('a partida Juntos é registrada sem vencedor', coopFim.registro.modo === 'coop' && coopFim.registro.vencedor === -1, coopFim.registro);
+  // O duelo original (dois no aparelho) continua com a mesma passagem de vez.
+  await avaliar(c, "closeAllModals(); goHub(); startMode('duelo'); true");
+  await esperarPor(c, "!document.getElementById('dueloSetup').hidden");
+  await avaliar(c, "document.querySelector('#dueloModoChips [data-modo=local]').click(); document.getElementById('dueloComecar').click(); true");
+  await espera(300);
+  await pronto(); await espera(150); await acertarPeca(); await espera(200);
+  await pronto(); await espera(150); await acertarPeca(); await espera(200);
+  const local = await avaliar(c, "({ modo:CM_DUELO.detalhes().modo, ach:CM_DUELO.detalhes().achados.slice(), vez:CM_DUELO.detalhes().vez })");
+  confere('no duelo de dois no aparelho os dois jogadores jogam a sua vez', local.modo === 'local' && local.ach[0] === 1 && local.ach[1] === 1 && local.vez === 0, local);
+  await avaliar(c, "goHub(); startMode('duelo'); true");
+  await esperarPor(c, "!document.getElementById('dueloSetup').hidden");
+  await avaliar(c, "document.getElementById('desafioCodigo').value='ZZZZ-ZZZ'; document.querySelector('[data-acao=jogarDesafio]').click(); true");
+  confere('código de desafio errado é recusado com recado', /não confere|não existe|outra versão/.test((await texto(c, 'desafioMsg')) || '') && (await tela(c)) === 'screenDuelo', await texto(c, 'desafioMsg'));
+  const des0 = await avaliar(c, `(function(){ document.querySelector('[data-acao=criarDesafio]').click();
+    var cod=document.getElementById('desafioCodigo').value, info=CM_DUELO.desafio.ler(cod);
+    return { cod:cod, ok:info.ok, esperadas:CM_DUELO.desafio.perguntas(info).map(function(q){return q.txt;}), ano:G.ano, nivel:G.nivel,
+      msg:window.__J.texto('desafioMsg') }; })()`);
+  confere('Criar desafio escreve um código válido e explica o que fazer', des0.ok && /^Código criado: /.test(des0.msg), des0);
+  await avaliar(c, "document.querySelector('[data-acao=jogarDesafio]').click(); true");
+  const vistas = [];
+  for (let i = 1; i <= 5; i++) {
+    await esperaQuiz(i);
+    vistas.push(await avaliar(c, 'G.currentQ.txt'));
+    await avaliar(c, 'window.__J.responder(true)');
+  }
+  confere('o desafio pergunta exatamente as cinco do código, na ordem', JSON.stringify(vistas) === JSON.stringify(des0.esperadas), { vistas, esperadas: des0.esperadas });
+  confere('o desafio fecha com o resumo', await esperaResumo());
+  confere('o resumo dá o resultado do desafio com o código', new RegExp('^Desafio ' + des0.cod + ': 5 de 5 em \\d+:\\d{2}').test((await texto(c, 'luPhaseText')) || ''), await texto(c, 'luPhaseText'));
+  await clicar(c, '#modalLevelUp', 'Continuar');
+  await avaliar(c, 'goHub(); true');
+  await espera(300);
+  confere('o desafio não muda o ano nem o nível de quem jogou', await avaliar(c, `G.ano === ${des0.ano} && G.nivel === ${des0.nivel}`), await avaliar(c, '[G.ano, G.nivel]'));
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);

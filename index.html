@@ -673,6 +673,8 @@
       <div class="duelo-chips" id="dueloModoChips" role="radiogroup" aria-labelledby="rotuloModo">
         <button type="button" class="chip-opcao ativa" role="radio" aria-checked="true" data-modo="local">
           <i class="fa-solid fa-table-cells-large"></i> Dois no aparelho</button>
+        <button type="button" class="chip-opcao" role="radio" aria-checked="false" data-modo="coop">
+          <i class="fa-solid fa-handshake"></i> Juntos</button>
         <button type="button" class="chip-opcao" role="radio" aria-checked="false" data-modo="rede">
           <i class="fa-solid fa-wifi"></i> Sala por código</button>
       </div>
@@ -682,7 +684,9 @@
           <input type="text" id="dueloNome1" maxlength="14" autocomplete="off"></label>
         <label class="duelo-campo"><span>Jogador 2</span>
           <input type="text" id="dueloNome2" maxlength="14" autocomplete="off"></label>
+        <p class="duelo-nota duelo-nota-cheia">O Jogador 1 é quem está com o perfil: só as contas dele entram no histórico, nas missões e nas medalhas.</p>
       </div>
+      <p class="duelo-nota" id="dueloNotaCoop" hidden></p>
 
       <div class="duelo-rede" id="dueloRede" hidden>
         <div class="duelo-rede-linha">
@@ -706,6 +710,19 @@
       <p class="duelo-aviso" id="dueloAviso" hidden></p>
       <button type="button" class="btn-duelo btn-duelo-primario" id="dueloComecar">
         <i class="fa-solid fa-play"></i> Começar a caçada</button>
+
+      <div class="duelo-desafio" role="group" aria-labelledby="rotuloDesafio">
+        <p class="duelo-rotulo" id="rotuloDesafio"><i class="fa-solid fa-key"></i> Desafio por código (sem internet)</p>
+        <p class="duelo-nota">Cada um joga as mesmas 5 perguntas no próprio aparelho, quando puder. Nada é enviado e o código não tem nome nem dado pessoal: comparem os resultados conversando.</p>
+        <div class="duelo-rede-linha">
+          <button type="button" class="btn-duelo" data-acao="criarDesafio"><i class="fa-solid fa-wand-magic-sparkles"></i> Criar desafio</button>
+          <label class="duelo-campo duelo-campo-codigo"><span>Código do desafio</span>
+            <input type="text" id="desafioCodigo" maxlength="9" placeholder="1A2B-3C4"
+                   autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+          <button type="button" class="btn-duelo" data-acao="jogarDesafio"><i class="fa-solid fa-play"></i> Jogar</button>
+        </div>
+        <p class="duelo-nota" id="desafioMsg" aria-live="polite"></p>
+      </div>
     </div>
 
     <!-- 2) partida -->

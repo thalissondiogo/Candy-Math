@@ -1000,7 +1000,7 @@ function irParaEntrada() {
 // relido da chave do perfil novo. Sem isto, as estrelas de um irmão ficariam
 // na tela do outro até a primeira gravação — e aí se misturariam de verdade.
 function trocarEstudante(perfil) {
-  nivelGlobal = null;
+  nivelGlobal = null; anoGlobal = null; desafioAtivo = null;
   clearAllGameIntervals();
   closeAllModals();
   Object.assign(G, {
@@ -1309,14 +1309,19 @@ function startMode(mode) {
 // O nível adaptativo de verdade fica guardado em nivelGlobal e volta ao sair;
 // com nível fixo a rodada não sobe nem desce o degrau, nem conta para medalha.
 let nivelGlobal = null;
+let anoGlobal = null;
+// Desafio por código em andamento: { codigo, inicio }. Ano e nível vêm do código.
+let desafioAtivo = null;
 function aplicarNivelDoJogo(mode) {
   restaurarNivel();
+  desafioAtivo = null;
   const fixo = G.prefs && G.prefs.nivelPorJogo[mode];
   if (!fixo) return;
   nivelGlobal = G.nivel;
   G.nivel = fixo;
 }
 function restaurarNivel() {
+  if (anoGlobal !== null) { G.ano = anoGlobal; anoGlobal = null; }
   if (nivelGlobal === null) return;
   G.nivel = nivelGlobal;
   nivelGlobal = null;
@@ -1325,6 +1330,7 @@ function nivelEhFixo() { return nivelGlobal !== null; }
 
 function goHub() {
   restaurarNivel();
+  desafioAtivo = null;
   clearAllGameIntervals();
   // O duelo tem relógio próprio: se ele continuar pulsando depois de sair da
   // tela, o tempo do jogador segue correndo sem ninguém olhando.
@@ -1462,7 +1468,9 @@ function handleQuizAnswer(chosen, correct, btn) {
     btns.forEach(b => b.disabled = true);
     btns[correct].classList.add('reveal');
     perdeu();
-    const reforco = reforcoDe(G.currentQ);
+    // No desafio por código as cinco perguntas são as mesmas para os dois
+    // jogadores: reforço entraria no lugar de uma delas.
+    const reforco = desafioAtivo ? null : reforcoDe(G.currentQ);
     if (reforco) filaQuiz.unshift(reforco);
     ultimaExplicacao = fimDeQuizMSG(G.currentQ, reforco);
     showQuizFeedback(ultimaExplicacao);
@@ -2796,7 +2804,11 @@ function finishRound(mode) {
 
   document.querySelector('.lu-title').textContent =
     feitos >= 3 ? 'Rodada concluída!' : 'Boa — vamos de novo!';
-  $('luPhaseText').textContent = nivelEhFixo()
+  const textoDesafio = desafioAtivo
+    ? 'Desafio ' + desafioAtivo.codigo + ': ' + feitos + ' de ' + total + ' em ' + tempoDeRelogio(Date.now() - desafioAtivo.inicio) +
+      '. Quem tem o mesmo código joga as mesmas perguntas: comparem os resultados conversando.'
+    : '';
+  $('luPhaseText').textContent = textoDesafio ? textoDesafio : (nivelEhFixo()
     ? 'Este jogo está com a dificuldade fixa em ' + textoNivel() + ' (Ajustes). O seu nível no resto do jogo continua o mesmo.'
     : nivelAnterior === G.nivel
     ? 'Fica no ' + textoNivel() + ': ' + DESCRICAO_NIVEL[G.nivel - 1].split('.')[0] + '.'
@@ -2804,7 +2816,7 @@ function finishRound(mode) {
       ? 'Você acertou a rodada inteira, então o próximo degrau vem um pouco mais difícil: ' +
         C.NIVEIS[nivelAnterior - 1] + ' → ' + C.NIVEIS[G.nivel - 1] + '.'
       : 'Esse nível travou bastante, então dou um passo de volta: ' +
-        C.NIVEIS[nivelAnterior - 1] + ' → ' + C.NIVEIS[G.nivel - 1] + '. É o mesmo conteúdo do seu ano.';
+        C.NIVEIS[nivelAnterior - 1] + ' → ' + C.NIVEIS[G.nivel - 1] + '. É o mesmo conteúdo do seu ano.');
   $('luStarsText').innerHTML = '+' + ganho + ' <i class="fa-solid fa-star"></i>' +
     (bonus ? ' (sendo ' + bonus + ' de bônus da rodada)' : '');
   $('luConteudo').textContent = G.trabalhados.length
@@ -2814,6 +2826,44 @@ function finishRound(mode) {
   openModal('modalLevelUp');
   spawnLevelUpConfetti();
   playSound('levelup');
+}
+
+// ── Desafio por código (sem internet) ─────────────────
+// O código vem do duelo.js (CM_DUELO.desafio): ano, nível e semente. A rodada
+// é um quiz de 5 perguntas sorteadas com a semente — iguais em qualquer
+// aparelho —, sem reforço e sem revisão no meio, e não mexe no nível nem no
+// ano de quem joga. Nada é enviado.
+function tempoDeRelogio(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+function avisoDesafio(texto) { const m = $('desafioMsg'); if (m) m.textContent = texto; }
+function criarDesafio() {
+  const D = window.CM_DUELO && CM_DUELO.desafio;
+  if (!D) return;
+  const codigo = D.codigo({ ano: G.ano, nivel: G.nivel, semente: D.novaSemente() });
+  $('desafioCodigo').value = codigo;
+  avisoDesafio('Código criado: ' + codigo + ' (' + G.ano + 'º ano, ' + textoNivel() + '). Passe para quem vai jogar e toque em Jogar.');
+}
+function jogarDesafio() {
+  const D = window.CM_DUELO && CM_DUELO.desafio;
+  if (!D) return;
+  const lido = D.ler(($('desafioCodigo').value || '').slice(0, 16));
+  if (!lido.ok) { avisoDesafio(lido.erro); return; }
+  if (window.CM_DUELO.parar) CM_DUELO.parar();
+  clearAllGameIntervals();
+  restaurarNivel();
+  anoGlobal = G.ano; nivelGlobal = G.nivel;
+  G.ano = lido.ano; G.nivel = lido.nivel;
+  G.currentMode = 'quiz';
+  G.quizIndex = 0;
+  quizDots = [];
+  iniciarRodada();
+  filaQuiz = D.perguntas(lido);
+  desafioAtivo = { codigo: lido.codigo, inicio: Date.now() };
+  carregarQuiz();
+  showScreen('screenQuiz');
+  showToast('Desafio ' + lido.codigo + ': ' + lido.ano + 'º ano, ' + C.NIVEIS[lido.nivel - 1] + '. Boa sorte!');
 }
 
 // ──────────────────────────────────────────────────
@@ -3644,9 +3694,9 @@ function gravarLocal() {
   try {
     localStorage.setItem(chaveAtual(), JSON.stringify({
       stars:        G.stars,
-      ano:          G.ano,
       // Gravar no meio de uma rodada de nível fixo guarda o nível de verdade.
       nivel:        nivelGlobal !== null ? nivelGlobal : G.nivel,
+      ano:          anoGlobal !== null ? anoGlobal : G.ano,
       totalCorrect: G.totalCorrect,
       streak:       G.streak,
       bestStreak:   G.bestStreak,
@@ -3703,7 +3753,7 @@ function recordeSanit(e) {
   return {
     quando:    Number.isFinite(e.quando) && e.quando > 0 ? Math.round(e.quando) : Date.now(),
     densidade: [20, 40, 60, 80].indexOf(e.densidade) >= 0 ? e.densidade : 40,
-    modo:      e.modo === 'rede' ? 'rede' : 'local',
+    modo:      e.modo === 'rede' || e.modo === 'coop' ? e.modo : 'local',
     placar:    Array.isArray(e.placar) ? [contadorValido(e.placar[0]), contadorValido(e.placar[1])] : [0, 0],
     tempo:     contadorValido(e.tempo),
     tempoMeu:  contadorValido(e.tempoMeu),
@@ -3853,6 +3903,8 @@ const ACOES_DOS_BOTOES = {
   },
   speakText:     function ()          { speakText(); },
   ouvirExplicacao: function ()        { ouvirExplicacao(); },
+  criarDesafio:  function ()          { criarDesafio(); },
+  jogarDesafio:  function ()          { jogarDesafio(); },
   spinRoulette:  function ()          { spinRoulette(); },
   startMode:     function (modo)      { startMode(modo); },
   toggleSound:   function ()          { toggleSound(); },

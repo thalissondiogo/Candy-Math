@@ -85,7 +85,17 @@ function tempoDaVez() {
   return SEGUNDOS_POR_NIVEL[anoNv().nv - 1] * (P.tempoExtra ? 2 : 1);
 }
 function naRede() { return P.modo === 'rede' && !!(P.sala && P.sala.enviar); }
-function doMeuLado() { return P.modo === 'local' ? true : P.vez === P.assento; }
+function juntos() { return P.modo === 'coop'; }
+// No mesmo aparelho, o perfil aberto é do Jogador 1: só as contas dele entram
+// no histórico, nas missões e nas medalhas. Na sala, cada aparelho é de quem
+// está no próprio assento. (Antes, as contas dos dois iam para o perfil.)
+function contaParaOPerfil(quem) { return P.modo === 'rede' ? quem === P.assento : quem === 0; }
+// Meta da equipe no modo Juntos: limpar a tela com no máximo 1 toque errado a
+// cada 5 números. Não há vencedor; o bônus, se vier, é dos dois.
+function metaDeErros() { return Math.ceil(P.densidade / 5); }
+// Mesmo aparelho = dois no aparelho OU Juntos: os dois lados tocam na mesma tela.
+function mesmoAparelho() { return P.modo !== 'rede'; }
+function doMeuLado() { return mesmoAparelho() ? true : P.vez === P.assento; }
 
 function esc(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -329,7 +339,13 @@ function pintarSetup() {
       ' s</b> no ' + C.NIVEIS[anoNv().nv - 1] + '. Acertou, o número sai e a vez passa. ' +
       'Errou, a mesma conta fica com você — e é o seu relógio que corre.';
   }
-  el('dueloNomes').hidden = P.modo !== 'local';
+  el('dueloNomes').hidden = P.modo === 'rede';
+  const coop = el('dueloNotaCoop');
+  if (coop) {
+    coop.hidden = !juntos();
+    coop.textContent = 'Juntos: vocês revezam a vez e somam para a equipe. Meta: limpar os ' + P.densidade +
+      ' números com no máximo ' + metaDeErros() + ' toques errados. Cumprida, os dois ganham o bônus de ' + BONUS_VITORIA + ' estrelas.';
+  }
   el('dueloRede').hidden = P.modo !== 'rede';
   const porque = motivoDaRede();
   const falta = el('dueloFaltaNuvem');
@@ -435,14 +451,14 @@ function chamarVez(motivo) {
   if (caixa) {
     caixa.hidden = false;
     el('dueloPassaNome').textContent = P.nomes[P.vez];
-    el('dueloPassaTexto').textContent = motivo + ' ' + (P.modo === 'local'
+    el('dueloPassaTexto').textContent = motivo + ' ' + (mesmoAparelho()
       ? 'Passe o aparelho para ' + P.nomes[P.vez] + ' e toque em Estou pronto.'
       : (P.vez === P.assento
         ? 'É a sua vez. Quando estiver olhando para a tela, toque em Estou pronto.'
         : 'Vez de ' + P.nomes[P.vez] + '. Seu relógio está parado — é a vez do outro lado.'));
   }
   const botao = el('dueloPronto');
-  if (botao) botao.disabled = !(P.modo === 'local' || P.vez === P.assento);
+  if (botao) botao.disabled = !(mesmoAparelho() || P.vez === P.assento);
   const barra = el('dueloTempoBarra');
   if (barra) { barra.style.width = '100%'; barra.classList.remove('aperta'); }
   pintarPlacar();
@@ -531,7 +547,7 @@ function achou(peca) {
   P.semAchar = 0;
   G.stars += POR_ACHADO;
   som('correct');
-  registrarNoHistoria(P.conta, !P.errouNesta);
+  if (contaParaOPerfil(quem)) registrarNoHistoria(P.conta, !P.errouNesta);
   if (naRede()) P.sala.enviar('duelo:acerto', { peca: peca.id, conta: P.conta.ref, assento: quem, tempo: P.tempos[quem] });
   limparBrilho();
   pintarPlacar();
@@ -764,6 +780,7 @@ function encerrar() {
   P.travada = true;
   limparBrilho();
 
+  if (juntos()) return encerrarJuntos();
   const empatados = P.achados[0] === P.achados[1];
   const vencedor = empatados
     ? (Math.abs(P.tempos[0] - P.tempos[1]) < 500 ? -1 : (P.tempos[0] < P.tempos[1] ? 0 : 1))
@@ -779,6 +796,103 @@ function encerrar() {
   som(meuVitoria ? 'levelup' : 'wrong');
   if (meuVitoria && !semMovimento() && tem('showConfetti')) root.showConfetti();
 }
+
+// Fim do modo Juntos: sem vencedor. A equipe cumpre (ou não) a meta de erros.
+function encerrarJuntos() {
+  const erros = P.erros[0] + P.erros[1];
+  const achados = P.achados[0] + P.achados[1];
+  const cumpriu = erros <= metaDeErros();
+  if (cumpriu) G.stars += BONUS_VITORIA;
+  registrarDuelo(-1, false);
+  pintarPlacar();
+  if (tem('atualizarBarra')) root.atualizarBarra('dueloStarsBar');
+  const caixa = el('dueloFim');
+  if (caixa) {
+    caixa.innerHTML = '' +
+      '<div class="duelo-fim-onca"><i class="fa-solid fa-handshake"></i></div>' +
+      '<h3 class="duelo-fim-titulo">' + esc(cumpriu ? 'Meta da equipe cumprida!' : 'Tela limpa, juntos!') + '</h3>' +
+      '<p class="duelo-fim-motivo">' + esc(P.nomes[0] + ' e ' + P.nomes[1] + ' acharam ' + achados + ' números com ' + erros +
+        (erros === 1 ? ' toque errado' : ' toques errados') + ' (meta: até ' + metaDeErros() + '), em ' +
+        relogio(P.tempos[0] + P.tempos[1]) + ' de relógio somado.') + '</p>' +
+      '<p class="duelo-fim-estrelas">+' + (achados + (cumpriu ? BONUS_VITORIA : 0)) + ' <i class="fa-solid fa-star"></i>' +
+        (cumpriu ? ' <span>(' + BONUS_VITORIA + ' do bônus da equipe)</span>' : '') + '</p>' +
+      '<p class="duelo-fim-nota">' + esc(cumpriu ? 'Contas conferidas com calma rendem mais do que pressa.'
+        : 'Na próxima, vale conferir a conta antes de tocar: a meta é errar pouco, não correr.') + '</p>' +
+      '<div class="duelo-fim-acoes">' +
+        '<button type="button" class="btn-duelo btn-duelo-primario" id="dueloRevanche"><i class="fa-solid fa-rotate"></i> Jogar de novo</button>' +
+        '<button type="button" class="btn-duelo" data-acao="goHub"><i class="fa-solid fa-arrow-left"></i> Voltar aos jogos</button>' +
+      '</div>';
+    const repetir = el('dueloRevanche');
+    if (repetir) repetir.onclick = () => { if (tem('closeModal')) root.closeModal('modalDuelo'); abrir(); };
+    if (tem('openModal')) root.openModal('modalDuelo');
+  }
+  som(cumpriu ? 'levelup' : 'correct');
+}
+
+// ── 9b. DESAFIO POR CÓDIGO (sem internet) ─────────────────
+// O código carrega ano, nível e uma semente. Quem digita o mesmo código
+// sorteia as MESMAS 5 perguntas no próprio aparelho: nada vai para a rede,
+// nada pessoal entra no código. Sem servidor não há como conferir o placar
+// do outro — o desafio é amistoso, e a tela diz isso.
+// 35 bits = 7 letras do alfabeto de Crockford (sem I, L, O, U, que confundem):
+// versão (2) · ano-1 (4) · nível-1 (2) · semente (20) · verificador (7).
+const ALFABETO_DESAFIO = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const VERSAO_DESAFIO = 1;
+const PERGUNTAS_DO_DESAFIO = 5;
+function verificador(v) { return v % 113; }
+function codigoDesafio(info) {
+  const ano = Math.min(9, Math.max(1, info.ano | 0));
+  const nivel = Math.min(4, Math.max(1, info.nivel | 0));
+  const semente = (info.semente >>> 0) % 1048576;
+  const v = ((VERSAO_DESAFIO * 16 + (ano - 1)) * 4 + (nivel - 1)) * 1048576 + semente;   // 28 bits
+  let n = v * 128 + verificador(v);                                                       // 35 bits
+  let s = '';
+  for (let i = 0; i < 7; i++) { s = ALFABETO_DESAFIO[n % 32] + s; n = Math.floor(n / 32); }
+  return s.slice(0, 4) + '-' + s.slice(4);
+}
+function lerDesafio(texto) {
+  const limpo = String(texto || '').toUpperCase().replace(/[\s-]/g, '').replace(/O/g, '0').replace(/[IL]/g, '1');
+  if (limpo.length !== 7) return { ok: false, erro: 'O código do desafio tem 7 letras e números (como 1A2B-3C4).' };
+  let n = 0;
+  for (const ch of limpo) {
+    const k = ALFABETO_DESAFIO.indexOf(ch);
+    if (k < 0) return { ok: false, erro: 'Esse código tem uma letra que não existe nos desafios. Confira com quem passou.' };
+    n = n * 32 + k;
+  }
+  const v = Math.floor(n / 128);
+  if (n % 128 !== verificador(v)) return { ok: false, erro: 'Esse código não confere: alguma letra foi trocada. Confira com quem passou.' };
+  const semente = v % 1048576;
+  let resto = Math.floor(v / 1048576);
+  const nivel = resto % 4 + 1; resto = Math.floor(resto / 4);
+  const ano = resto % 16 + 1; const versao = Math.floor(resto / 16);
+  if (versao !== VERSAO_DESAFIO || ano > 9) return { ok: false, erro: 'Esse código é de outra versão do jogo.' };
+  return { ok: true, ano: ano, nivel: nivel, semente: semente, codigo: codigoDesafio({ ano: ano, nivel: nivel, semente: semente }) };
+}
+// Gerador com semente (mulberry32) no lugar de Math.random só durante o sorteio.
+function comSemente(semente, fn) {
+  const original = Math.random;
+  let a = semente >>> 0;
+  Math.random = function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  try { return fn(); } finally { Math.random = original; }
+}
+function perguntasDoDesafio(info) {
+  return comSemente(info.semente + 7919 * info.ano + 104729 * info.nivel, () => {
+    const usadas = [];
+    const lista = [];
+    for (let i = 0; i < PERGUNTAS_DO_DESAFIO; i++) {
+      const it = C.sortear({ ano: info.ano, nv: info.nivel, usadas: usadas });
+      usadas.push(it.ref);
+      lista.push(it);
+    }
+    return lista;
+  });
+}
+function novaSemente() { return Math.floor(Math.random() * 1048576); }
 
 // O duelo não mexe no nível: quem sobe ou desce degrau é a rodada completa
 // dos outros jogos. Aqui fica o recorde da caçada.
@@ -871,6 +985,10 @@ root.CM_DUELO = {
     P.sala = null;
   },
   detalhes: function () { return P; },
+  desafio: {
+    codigo: codigoDesafio, ler: lerDesafio, perguntas: perguntasDoDesafio, comSemente: comSemente,
+    novaSemente: novaSemente, PERGUNTAS: PERGUNTAS_DO_DESAFIO,
+  },
 };
 
 // Chamada pelo script.js quando o jogo abre pelo hub.

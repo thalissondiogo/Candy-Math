@@ -1365,6 +1365,8 @@ body.pref-calmo .lu-onca, body.pref-calmo .splash-onca-icon { animation:none; }
 .velha-x { color:#1E4FA8; }
 .velha-o { color:#B4530A; }
 .velha-status { text-align:center; font-weight:800; color:var(--text); margin:4px var(--pad) 8px; font-size:clamp(14px, 1.5vw, 17px); min-height:1.4em; }
+.duelo-desafio { margin-top:clamp(14px, 2.4vh, 22px); padding-top:clamp(10px, 1.8vh, 16px); border-top:2px dashed rgba(155,93,229,0.3); }
+.duelo-nota-cheia { flex-basis:100%; }
 .ajustes-box { border-top:5px solid var(--purple); border-radius:var(--r); }
 .aj-nota { margin:0 0 12px; font-size:var(--fs-apoio); color:var(--text2); line-height:1.4; }
 .aj-grupo { border:2px solid rgba(155,93,229,0.25); border-radius:var(--r-sm); padding:10px 12px 12px; margin:0 0 12px; }
