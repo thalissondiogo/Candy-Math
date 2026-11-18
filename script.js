@@ -162,6 +162,32 @@ function registrarResultado(acertou) {
   h.feitas++;
   if (acertou) { h.certas++; }
   CM_METAS.registrarResposta(G.metas, { u: itemAtual.u, acertou: acertou }, Date.now());
+  premiarDias();
+}
+
+// Marco de dias seguidos (3, 7, 14, 30): o prêmio entra no saldo e a notícia é
+// dada em texto e para o leitor de tela. metas.js anota o marco na hora, então
+// nenhum é pago duas vezes. O laço tem teto: no máximo um giro por marco que
+// existe, para que um defeito na anotação nunca trave a tela.
+function premiarDias() {
+  for (let i = 0; i < CM_METAS.MARCOS_DIAS.length; i++) {
+    const marco = CM_METAS.colherMarco(G.metas, Date.now());
+    if (!marco) break;
+    G.stars += marco.estrelas;
+    showToast(marco.dias + ' dias seguidos estudando! Ganhou ' + marco.estrelas + ' estrelas.');
+  }
+}
+
+// "3 dias", "1 dia". Sem sequência ativa a ficha some: zero dias não é recado
+// para ninguém, muito menos para quem voltou depois de um tempo.
+function pintarDias() {
+  const seq = CM_METAS.sequencia(G.metas, Date.now());
+  const ficha = $('hubDias');
+  if (ficha) {
+    ficha.hidden = seq.atual < 1;
+    $('hubDiasVal').textContent = seq.atual + (seq.atual === 1 ? ' dia' : ' dias');
+  }
+  return seq;
 }
 
 // As alternativas chegam com a correta em alt[0]; aqui elas são
@@ -666,6 +692,7 @@ function updateHubUI() {
   const desc = $('nivelDescricao');
   if (desc) desc.textContent = DESCRICAO_NIVEL[G.nivel - 1];
   pintarQuemJoga();
+  pintarDias();
   marcarChips();
   pintarMascotes();
 }
@@ -2338,6 +2365,7 @@ function finishRound(mode) {
 
   G.stars += bonus;
   CM_METAS.registrarRodada(G.metas, { acertos: feitos, total: total }, Date.now());
+  premiarDias();
   saveState();
 
   document.querySelector('.lu-title').textContent =
@@ -2567,6 +2595,9 @@ function abrirModalDeVerdade(id) {
     $('recStars').textContent   = numBR(G.stars);
     $('recConteudo').textContent = G.aprendidas.length;
     $('recStreak').textContent  = G.bestStreak;
+    const seqDias = pintarDias();
+    $('recDias').textContent = seqDias.atual;
+    $('recDiasRecorde').textContent = seqDias.recorde;
     $('recCorrect').textContent = numBR(G.totalCorrect);
     montarRoteiro();
   }

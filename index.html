@@ -104,6 +104,11 @@
             <span class="sr-only">Estrelas:</span>
             <span class="hub-stat-val" id="hubStars">0</span>
           </div>
+          <div class="hub-stat hs-dias" id="hubDias" hidden>
+            <span class="hub-stat-icon"><i class="fa-solid fa-calendar-check"></i></span>
+            <span class="sr-only">Dias seguidos estudando:</span>
+            <span class="hub-stat-val" id="hubDiasVal">0</span>
+          </div>
           <div class="hub-stat">
             <span class="hub-stat-icon"><i class="fa-solid fa-graduation-cap"></i></span>
             <span class="sr-only">Ano:</span>
@@ -787,7 +792,7 @@
         </div>
         <div class="rec-card rc-orange">
           <div class="rc-icon"><i class="fa-solid fa-fire"></i></div>
-          <div class="rc-label">Sequência</div>
+          <div class="rc-label">Acertos seguidos</div>
           <div class="rc-val" id="recStreak">0</div>
         </div>
         <div class="rec-card rc-mint">
@@ -795,12 +800,24 @@
           <div class="rc-label">Acertos</div>
           <div class="rc-val" id="recCorrect">0</div>
         </div>
+        <div class="rec-card rc-purple">
+          <div class="rc-icon"><i class="fa-solid fa-calendar-check"></i></div>
+          <div class="rc-label">Dias seguidos</div>
+          <div class="rc-val" id="recDias">0</div>
+        </div>
+        <div class="rec-card rc-purple">
+          <div class="rc-icon"><i class="fa-solid fa-calendar-days"></i></div>
+          <div class="rc-label">Recorde de dias</div>
+          <div class="rc-val" id="recDiasRecorde">0</div>
+        </div>
       </div>
       <div class="rec-roteiro" id="recRoteiro" hidden>
         <h3 class="rec-roteiro-titulo"><i class="fa-solid fa-compass"></i> Por onde continuar</h3>
         <ul class="rec-lista" id="recLista"></ul>
         <p class="rec-nota">Soma apenas o que você já jogou aqui. É um palpite sobre o caminho, não uma nota da escola.</p>
       </div>
+      <p class="rec-nota" id="recDiasNota">Um dia conta quando você fecha uma rodada ou responde 5 questões.
+        Ficou uns dias sem jogar? Nada se perde: é só começar uma sequência nova.</p>
       <p class="rec-nota">Para recomeçar ou apagar dados, abra o boletim dos responsáveis: a tecla fica lá,
         protegida por uma confirmação a mais.</p>
     </div>

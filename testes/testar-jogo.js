@@ -607,6 +607,47 @@ async function main() {
     { salvo: metas.salvo, memoria: metas.m });
   confere('o histórico continua no formato { feitas, certas }', metas.formatoHist);
 
+  // ── 13d. sequência de dias: hub, Recordes e marco de 3 dias ──
+  /* Hoje já contou (as rodadas acima). A ficha do hub aparece no celular, os
+     Recordes separam acertos seguidos de dias seguidos, e um marco é pago uma vez. */
+  await avaliar(c, 'updateHubUI(); true');
+  confere('com o dia de hoje contado, a ficha de dias aparece no hub',
+    await avaliar(c, "window.__J.vis(document.getElementById('hubDias'))") && (await texto(c, 'hubDiasVal')) === '1 dia',
+    await texto(c, 'hubDiasVal'));
+  confere('a ficha de dias se apresenta ao leitor de tela',
+    /Dias seguidos estudando/.test(await avaliar(c, "document.getElementById('hubDias').textContent")));
+  await avaliar(c, "openModal('modalRecords')");
+  await espera(300);
+  const recs = await avaliar(c, `({dias:window.__J.texto('recDias'), recorde:window.__J.texto('recDiasRecorde'),
+    acertos:window.__J.texto('recStreak'), melhor:G.bestStreak,
+    rotulos:Array.prototype.slice.call(document.querySelectorAll('#modalRecords .rc-label')).map(function(e){return e.textContent;}),
+    nota:window.__J.texto('recDiasNota')})`);
+  confere('Recordes mostram os dias seguidos e o recorde', recs.dias === '1' && recs.recorde === '1', recs);
+  confere('Recordes distinguem acertos seguidos de dias seguidos',
+    recs.rotulos.indexOf('Acertos seguidos') >= 0 && recs.rotulos.indexOf('Dias seguidos') >= 0
+    && recs.rotulos.indexOf('Sequência') < 0 && recs.acertos === String(recs.melhor), recs.rotulos);
+  confere('a regra do dia é explicada sem culpa', /5 questões/.test(recs.nota) && /Nada se perde/.test(recs.nota), recs.nota);
+  await avaliar(c, "closeModal('modalRecords')");
+  /* Ontem e anteontem também foram dias de estudo (vindos do save). Hoje a
+     contagem recomeça do zero e o dia passa a contar na quinta questão. */
+  const marco = await avaliar(c, `(function(){
+    var agora=Date.now(), dia=function(n){ return CM_METAS.diaLocal(agora - n*864e5); };
+    G.metas = CM_METAS.sanitizar({ dias:[dia(2), dia(1)], marcos:[] }, agora);
+    var antes=G.stars, toasts=[];
+    for (var i=0;i<5;i++){ registrarTrabalho({o:'Sequência de dias (teste)', u:'numeros'}); registrarResultado(i<3); }
+    var depois=G.stars;
+    for (var j=0;j<5;j++){ registrarTrabalho({o:'Sequência de dias (teste)', u:'numeros'}); registrarResultado(true); }
+    saveState(); updateHubUI();
+    return { ganho:depois-antes, depois:G.stars-depois, marcos:G.metas.marcos.slice(),
+      seq:CM_METAS.sequencia(G.metas, agora), aviso:window.__J.aviso().join(' | '),
+      ficha:window.__J.texto('hubDiasVal'), salvo:(window.__J.save().metas||{}).marcos };
+  })()`);
+  confere('o terceiro dia seguido paga o marco de 3 dias (+10)', marco.ganho === 10 && JSON.stringify(marco.marcos) === '[3]', marco);
+  confere('o marco não é pago de novo no mesmo dia', marco.depois === 0, marco);
+  confere('o marco é avisado em texto', /3 dias seguidos estudando! Ganhou 10 estrelas/.test(marco.aviso), marco.aviso);
+  confere('o hub mostra 3 dias', marco.ficha === '3 dias' && marco.seq.atual === 3, marco);
+  confere('o marco pago fica gravado no save', JSON.stringify(marco.salvo) === '[3]', marco.salvo);
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);
@@ -636,6 +677,7 @@ async function main() {
   confere('a melhor sequência volta', voltou.seq === guardado.seq);
   confere('o histórico por conteúdo volta inteiro', voltou.hist === guardado.hist && voltou.hist > 0, voltou);
   confere('as metas do dia e a lista de dias voltam iguais', voltou.metas === guardado.metas, { guardado: guardado.metas, voltou: voltou.metas });
+  confere('a ficha de dias volta depois de recarregar', (await texto(c, 'hubDiasVal')) === '3 dias', await texto(c, 'hubDiasVal'));
   confere('a caixa de peças volta', JSON.stringify(voltou.owned) === JSON.stringify(guardado.owned), voltou.owned);
   confere('o figurino volta peça por peça', JSON.stringify(voltou.equip) === JSON.stringify(guardado.equip),
     { guardado: guardado.equip, voltou: voltou.equip });

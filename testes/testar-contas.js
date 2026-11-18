@@ -228,7 +228,7 @@ async function main() {
     + "registrarTrabalho({o:'Teste de metas',u:'numeros'});registrarResultado(false);saveState();true");
   const metasTeo = await avaliar(c, `(window.__T.save('candymath_v3#${idTeo}')||{}).metas`);
   confere('as metas do Téo vão para a chave dele',
-    !!metasTeo && metasTeo.dia.respostas === 2 && metasTeo.dia.acertos === 1 && metasTeo.dias.length === 1, metasTeo);
+    !!metasTeo && metasTeo.dia.respostas === 2 && metasTeo.dia.acertos === 1 && metasTeo.dias.length === 0, metasTeo);
   const metasManuAntes = await avaliar(c, `(window.__T.save('candymath_v3#${idManu}')||{}).metas`);
   confere('as metas da Manu não recebem as respostas do Téo',
     !metasManuAntes || (metasManuAntes.dia.respostas === 0 && metasManuAntes.dias.length === 0), metasManuAntes);
