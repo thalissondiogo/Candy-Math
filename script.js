@@ -66,6 +66,27 @@ function prefsSanit(p) {
   return out;
 }
 G.prefs = prefsVazias();
+
+// Combinados da família (área de quem acompanha): limite de tempo por dia e
+// meta semanal de acertos. uso = tempo ATIVO de hoje (página visível, alguém
+// mexendo no último minuto), mais os minutos liberados pelo adulto hoje.
+const LIMITES_MIN = [0, 15, 30, 45, 60, 90, 120];
+const METAS_ACERTOS = [0, 20, 40, 80, 120];
+function familiaVazia() { return { limiteMin: 0, metaAcertos: 0, uso: { chave: '', segundos: 0, extraMin: 0 } }; }
+function familiaSanit(f) {
+  const out = familiaVazia();
+  if (!f || typeof f !== 'object' || Array.isArray(f)) return out;
+  if (LIMITES_MIN.indexOf(f.limiteMin) >= 0) out.limiteMin = f.limiteMin;
+  if (METAS_ACERTOS.indexOf(f.metaAcertos) >= 0) out.metaAcertos = f.metaAcertos;
+  const u = f.uso && typeof f.uso === 'object' ? f.uso : {};
+  if (u.chave === CM_METAS.diaLocal(Date.now())) {
+    out.uso.chave = u.chave;
+    out.uso.segundos = Number.isInteger(u.segundos) && u.segundos >= 0 && u.segundos <= 86400 ? u.segundos : 0;
+    out.uso.extraMin = Number.isInteger(u.extraMin) && u.extraMin >= 0 && u.extraMin <= 240 ? u.extraMin : 0;
+  }
+  return out;
+}
+G.familia = familiaVazia();
 // Modo calmo: o movimento desacelera; a matemática, a pontuação e a validação
 // das respostas são as mesmas. O duelo tem relógio próprio e não muda.
 function calmo() { return !!(G.prefs && G.prefs.calmo); }
@@ -264,6 +285,79 @@ function premiarMetas() {
 }
 // avaliacao.js (fim da prova) e duelo.js chamam por window.
 window.premiarMetas = premiarMetas;
+
+// ── Combinados da família: tempo ativo e meta semanal ──
+let ultimoGesto = Date.now();
+let avisouLimite = '';
+['pointerdown', 'keydown', 'touchstart'].forEach((ev) => document.addEventListener(ev, () => { ultimoGesto = Date.now(); }, { passive: true }));
+function usoDeHoje() {
+  const hoje = CM_METAS.diaLocal(Date.now());
+  if (G.familia.uso.chave !== hoje) G.familia.uso = { chave: hoje, segundos: 0, extraMin: 0 };
+  return G.familia.uso;
+}
+function minutosPermitidos() { return G.familia.limiteMin ? G.familia.limiteMin + usoDeHoje().extraMin : 0; }
+function tempoEsgotado() { return !!G.familia.limiteMin && usoDeHoje().segundos >= minutosPermitidos() * 60; }
+// Conta só tempo de uso de verdade: página visível, uma tela do jogo aberta e
+// alguém tocou ou digitou no último minuto. Aba esquecida aberta não conta.
+const PASSO_TEMPO = 5;
+function contarTempo() {
+  if (document.visibilityState !== 'visible') return false;
+  if (Date.now() - ultimoGesto > 60000) return false;
+  const tela = document.querySelector('.screen.active');
+  if (!tela || tela.id === 'screenSplash' || tela.id === 'screenEntrada') return false;
+  usoDeHoje().segundos += PASSO_TEMPO;
+  if (tempoEsgotado() && avisouLimite !== G.familia.uso.chave) {
+    avisouLimite = G.familia.uso.chave;
+    showToast('O tempo combinado para hoje terminou. Termine o que está fazendo com calma: amanhã tem mais.');
+  }
+  return true;
+}
+setInterval(contarTempo, PASSO_TEMPO * 1000);
+function pintarFamilia() {
+  const caixa = $('famCombinados');
+  if (!caixa) return;
+  caixa.querySelectorAll('select[data-familia]').forEach((sel) => { sel.value = String(G.familia[sel.getAttribute('data-familia')]); });
+  const uso = usoDeHoje();
+  const min = Math.floor(uso.segundos / 60);
+  const partes = ['Hoje: ' + min + (min === 1 ? ' minuto' : ' minutos') + ' de uso ativo' +
+    (G.familia.limiteMin ? ' de ' + minutosPermitidos() + ' combinados' : '') + '.'];
+  if (G.familia.metaAcertos) partes.push('Meta da semana: ' + Math.min(G.metas.semana.acertos, G.familia.metaAcertos) + ' de ' + G.familia.metaAcertos + ' acertos.');
+  $('famProgresso').textContent = partes.join(' ');
+}
+function pintarMetaDaFamilia() {
+  const linha = $('hmFamilia');
+  if (!linha) return;
+  const meta = G.familia.metaAcertos;
+  linha.hidden = !meta;
+  if (meta) {
+    const feitos = Math.min(G.metas.semana.acertos, meta);
+    linha.textContent = feitos >= meta
+      ? 'Combinado com a família nesta semana: ' + meta + ' acertos. Já foi!'
+      : 'Combinado com a família nesta semana: ' + meta + ' acertos. Até agora, ' + feitos + '.';
+  }
+}
+function mudarFamilia(sel) {
+  const k = sel.getAttribute('data-familia');
+  if (k !== 'limiteMin' && k !== 'metaAcertos') return;
+  G.familia[k] = Number(sel.value);
+  G.familia = familiaSanit(G.familia);
+  pintarFamilia();
+  saveState();
+}
+document.addEventListener('change', (ev) => {
+  const el = ev.target;
+  if (el && el.closest && el.closest('#famCombinados') && el.hasAttribute('data-familia')) mudarFamilia(el);
+});
+function liberarTempo() {
+  const liberar = () => {
+    usoDeHoje().extraMin = Math.min(240, usoDeHoje().extraMin + 15);
+    saveState();
+    closeModal('modalTempo');
+    showToast('Mais 15 minutos liberados para hoje.');
+  };
+  if (window.CM_CONTAS && !CM_CONTAS.adultoLiberado()) CM_CONTAS.pedirSenha('Liberar mais tempo hoje', liberar);
+  else liberar();
+}
 
 // ── Ajustes deste estudante ──────────────────────────
 // As opções valem para o perfil e voltam com ele. A tela só liga e desliga;
@@ -1016,6 +1110,7 @@ function trocarEstudante(perfil) {
     codigoVinculo: '', apelidoCrianca: perfil ? perfil.apelido : '',
     metas: CM_METAS.vazio(),
     prefs: prefsVazias(),
+    familia: familiaVazia(),
   });
   recentes = [];
   resetarMonte();
@@ -1063,6 +1158,7 @@ function updateHubUI() {
   pintarQuemJoga();
   pintarDias();
   pintarMissoes();
+  pintarMetaDaFamilia();
   marcarChips();
   pintarMascotes();
 }
@@ -1289,6 +1385,9 @@ function startMode(mode) {
   /* Antes da primeira partida de cada jogo, a explicação entra no caminho.
      Depois disso o botão "?" do cartão abre a mesma tela, e o jogo começa
      direto. */
+  // Tempo combinado de hoje acabou: nenhum jogo novo começa (a rodada em
+  // andamento terminou do jeito dela). Quem acompanha pode liberar mais.
+  if (tempoEsgotado()) { openModal('modalTempo'); return; }
   if (window.CM_TUTORIAL && CM_TUTORIAL.precisaMostrar(mode)) {
     CM_TUTORIAL.abrir(mode, {
       rotuloAcao: mode === 'duelo' ? 'Montar a partida'
@@ -3246,6 +3345,7 @@ function abrirModalDeVerdade(id) {
   // O boletim inteiro vive em avaliacao.js: aqui só avisamos que ele abriu,
   // para que os números sejam relidos na hora (e não os da última vez).
   if (id === 'modalPais' && window.CM_AVALIACAO) window.CM_AVALIACAO.boletim();
+  if (id === 'modalPais') pintarFamilia();
   // A tela de apagar tem de dizer a verdade sobre a conta naquele momento,
   // senão o botão de cima promete uma exclusão que não tem quem assine.
   if (id === 'modalApagar') pintarApagar();
@@ -3417,6 +3517,7 @@ function apagarLocal(semAviso) {
   G.apelidoCrianca = '';
   G.metas = CM_METAS.vazio();
   G.prefs = prefsVazias();
+  G.familia = familiaVazia();
   aplicarPreferencias();
   resetarMonte();
   const guardado = gravarLocal();
@@ -3713,6 +3814,7 @@ function gravarLocal() {
       apelidoCrianca: G.apelidoCrianca,
       metas:        G.metas,
       prefs:        G.prefs,
+      familia:      G.familia,
     }));
     return true;
   } catch (e) {
@@ -3854,6 +3956,7 @@ function loadState() {
   // Save de antes das metas não tem o campo: começa vazio, sem tocar no resto.
   G.metas           = CM_METAS.sanitizar(d.metas, Date.now());
   G.prefs           = prefsSanit(d.prefs);
+  G.familia         = familiaSanit(d.familia);
   const sIcon = $('soundIcon');
   if (sIcon) sIcon.className = G.soundOn ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
 }
@@ -3904,6 +4007,7 @@ const ACOES_DOS_BOTOES = {
   speakText:     function ()          { speakText(); },
   ouvirExplicacao: function ()        { ouvirExplicacao(); },
   criarDesafio:  function ()          { criarDesafio(); },
+  liberarTempo:  function ()          { liberarTempo(); },
   jogarDesafio:  function ()          { jogarDesafio(); },
   spinRoulette:  function ()          { spinRoulette(); },
   startMode:     function (modo)      { startMode(modo); },

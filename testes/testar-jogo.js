@@ -1086,6 +1086,41 @@ async function main() {
   await espera(300);
   confere('o desafio não muda o ano nem o nível de quem jogou', await avaliar(c, `G.ano === ${des0.ano} && G.nivel === ${des0.nivel}`), await avaliar(c, '[G.ano, G.nivel]'));
 
+  // ── 13n. combinados da família: tempo ativo, limite e meta ──
+  const escolherFam = (k, v) => avaliar(c, `(function(){ var s=document.querySelector('#famCombinados select[data-familia=${k}]'); s.value='${v}';
+    s.dispatchEvent(new Event('change',{bubbles:true})); return true; })()`);
+  await avaliar(c, "goHub(); openModal('modalPais'); true");
+  await espera(400);
+  await escolherFam('limiteMin', 15);
+  await escolherFam('metaAcertos', 20);
+  const fam0 = await avaliar(c, `({ fam:G.familia, salvo:window.__J.save().familia, prog:window.__J.texto('famProgresso') })`);
+  confere('o Boletim grava o limite e a meta da família no perfil',
+    fam0.fam.limiteMin === 15 && fam0.fam.metaAcertos === 20 && fam0.salvo.limiteMin === 15 && fam0.salvo.metaAcertos === 20, fam0);
+  confere('o Boletim mostra o uso de hoje e a meta da semana', /^Hoje: \d+ minutos? de uso ativo de 15 combinados\. Meta da semana: \d+ de 20 acertos\.$/.test(fam0.prog), fam0.prog);
+  await avaliar(c, "closeAllModals(); goHub(); true");
+  confere('a meta da família aparece para a criança, sem cobrança',
+    /^Combinado com a família nesta semana: 20 acertos\. (Até agora, \d+\.|Já foi!)$/.test((await texto(c, 'hmFamilia')) || ''), await texto(c, 'hmFamilia'));
+  const tempo = await avaliar(c, `(function(){ var antes=usoDeHoje().segundos;
+    ultimoGesto=Date.now(); var ativo=contarTempo(), depois=usoDeHoje().segundos;
+    ultimoGesto=Date.now()-120000; var parado=contarTempo(), depois2=usoDeHoje().segundos;
+    ultimoGesto=Date.now(); return { antes:antes, ativo:ativo, depois:depois, parado:parado, depois2:depois2 }; })()`);
+  confere('com alguém mexendo, o tempo de uso conta', tempo.ativo && tempo.depois === tempo.antes + 5, tempo);
+  confere('mais de um minuto sem toque não conta tempo', !tempo.parado && tempo.depois2 === tempo.depois, tempo);
+  await avaliar(c, "usoDeHoje().segundos = 15 * 60; startMode('quiz'); true");
+  await espera(300);
+  const bloq = await avaliar(c, "({ tela:window.__J.tela(), aberto:window.__J.aberto('modalTempo'), texto:document.querySelector('#modalTempo .tempo-texto').textContent })");
+  confere('com o tempo combinado esgotado, nenhum jogo novo começa', bloq.tela === 'screenHub' && bloq.aberto, bloq);
+  confere('o aviso convida a descansar, sem culpa', /está guardado/.test(bloq.texto) && !/culpa|perdeu|castigo/i.test(bloq.texto), bloq.texto);
+  await clicar(c, '#modalTempo', 'Liberar mais 15 minutos');
+  await espera(300);
+  confere('quem acompanha libera mais 15 minutos e o jogo abre',
+    (await avaliar(c, "usoDeHoje().extraMin === 15 && !window.__J.aberto('modalTempo') && (startMode('quiz'), window.__J.tela() === 'screenQuiz')")));
+  await avaliar(c, "goHub(); openModal('modalPais'); true");
+  await escolherFam('limiteMin', 0);
+  await escolherFam('metaAcertos', 0);
+  await avaliar(c, "closeAllModals(); goHub(); true");
+  confere('sem meta, a linha da família some do hub', await avaliar(c, "document.getElementById('hmFamilia').hidden && G.familia.limiteMin === 0"));
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);

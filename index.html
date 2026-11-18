@@ -181,7 +181,8 @@
             <ul class="hm-lista" id="missoesSemana" aria-labelledby="tituloMissoesSemana"></ul>
           </div>
         </div>
-        <p class="hm-nota">Só acerto conta. Se não der hoje, amanhã tem outras — nada se perde.</p>
+        <p class="hm-familia" id="hmFamilia" hidden></p>
+      <p class="hm-nota">Só acerto conta. Se não der hoje, amanhã tem outras — nada se perde.</p>
       </section>
 
       <h2 class="hub-title">Escolha o jogo!</h2>
@@ -900,6 +901,19 @@
     </div>
   </div>
 
+  <!-- ===== MODAL: TEMPO COMBINADO ===== -->
+  <div id="modalTempo" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloTempo" style="display:none">
+    <div class="modal-box ajustes-box">
+      <div class="modal-hdr">
+        <h2 id="tituloTempo"><i class="fa-solid fa-moon"></i> Hora de descansar</h2>
+        <button class="btn-close-modal" aria-label="Fechar" data-acao="closeModal" data-args='["modalTempo"]'><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="tempo-texto">O tempo de jogo combinado com a sua família para hoje terminou. Tudo o que você conquistou está guardado, e amanhã os jogos estão esperando por você.</p>
+      <p class="aj-nota">Quem acompanha pode liberar mais um pouco, se achar que vale.</p>
+      <button type="button" class="btn-prova-acao" data-acao="liberarTempo"><i class="fa-solid fa-unlock"></i> Liberar mais 15 minutos (quem acompanha)</button>
+    </div>
+  </div>
+
   <!-- ===== MODAL: AJUSTES DO ESTUDANTE ===== -->
   <div id="modalAjustes" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloAjustes" style="display:none">
     <div class="modal-box ajustes-box">
@@ -963,6 +977,21 @@
       <p class="pais-cabecalho">Documento gerado a partir das respostas registradas neste aparelho.
         Linguagem formal, leitura parcial: ele descreve o que o jogo viu, não o que a criança é.</p>
 
+      <h3 class="pais-titulo">0. Combinados da família</h3>
+      <div class="fam-combinados" id="famCombinados">
+        <label class="aj-nivel"><span>Tempo de jogo por dia</span>
+          <select data-familia="limiteMin">
+            <option value="0">Sem limite</option><option value="15">15 minutos</option><option value="30">30 minutos</option>
+            <option value="45">45 minutos</option><option value="60">1 hora</option><option value="90">1 hora e meia</option><option value="120">2 horas</option>
+          </select></label>
+        <label class="aj-nivel"><span>Meta de acertos na semana</span>
+          <select data-familia="metaAcertos">
+            <option value="0">Sem meta</option><option value="20">20 acertos</option><option value="40">40 acertos</option>
+            <option value="80">80 acertos</option><option value="120">120 acertos</option>
+          </select></label>
+        <p class="aj-nota" id="famProgresso"></p>
+        <p class="aj-nota">Conta só o tempo de uso de verdade (tela aberta e alguém mexendo). Quando o tempo acaba, a rodada em andamento termina normalmente e um aviso gentil convida a descansar; nenhum progresso se perde. A meta aparece para a criança como combinado, sem cobrança. Vale só para este perfil.</p>
+      </div>
       <h3 class="pais-titulo">1. Situação observada</h3>
       <div class="bol-situacao" id="bolSituacao"></div>
 

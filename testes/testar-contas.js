@@ -240,6 +240,7 @@ async function main() {
   await avaliar(c, "openModal('modalAjustes'); document.querySelector('#modalAjustes input[data-pref=calmo]').click(); closeModal('modalAjustes'); true");
   confere('o modo calmo do Téo vai para o save dele',
     (await avaliar(c, `((window.__T.save('candymath_v3#${idTeo}')||{}).prefs||{}).calmo`)) === true);
+  await avaliar(c, "G.familia.limiteMin = 30; saveState(); true");
   // Segunda medalha (reforço acertado) leva a bandana do Téo ao estágio 2.
   await avaliar(c, 'CM_METAS.registrarReforco(G.metas);premiarMetas();saveState();true');
   const bandanaTeo = await avaliar(c, `({ estagio:CM_METAS.insignia(G.metas).estagio,
@@ -296,6 +297,7 @@ async function main() {
     + "return {rotulo:s.getAttribute('aria-label'), broche:s.innerHTML.indexOf('M110.0 169.5')>=0};})()");
   confere('o palco da entrada, com a Manu ativa, desenha a bandana dela (sem broche)',
     palcoManu.rotulo === 'Juba Candy esperando para jogar' && !palcoManu.broche, palcoManu);
+  confere('o limite de tempo do Téo não vale para a Manu', await avaliar(c, 'G.familia.limiteMin === 0'));
   confere('a Manu entra sem o modo calmo do Téo',
     await avaliar(c, "G.prefs.calmo === false && !document.body.classList.contains('pref-calmo')"));
   const medalhasManu = await avaliar(c, 'G.metas.conquistas');
