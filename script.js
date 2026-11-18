@@ -286,6 +286,94 @@ function premiarMetas() {
 // avaliacao.js (fim da prova) e duelo.js chamam por window.
 window.premiarMetas = premiarMetas;
 
+// ── Cartão para baixar (Canvas nativo) ─────────────────
+// Uma imagem 1080×1080 com a marca, a Juba vestida e com a insígnia, e a
+// medalha ou o resultado da rodada. Leva o apelido só se houver perfil (é o
+// apelido que a família escolheu); nada de ano, escola ou data de nascimento.
+// Só baixa: não há compartilhamento automático nem envio para lugar nenhum.
+const LADO_CARTAO = 1080;
+function quebrarTexto(ctx, texto, largura) {
+  const palavras = String(texto).split(/\s+/);
+  const linhas = [];
+  let atual = '';
+  palavras.forEach((p) => {
+    const tenta = atual ? atual + ' ' + p : p;
+    if (ctx.measureText(tenta).width > largura && atual) { linhas.push(atual); atual = p; } else atual = tenta;
+  });
+  if (atual) linhas.push(atual);
+  return linhas;
+}
+function imagemDoMascote() {
+  const svg = MASCOTE.svg(G.equip, { corte: 'inteiro', estagio: insigniaAtual().estagio, titulo: 'Juba Candy' });
+  return new Promise((ok, falha) => {
+    const img = new Image();
+    img.onload = () => ok(img);
+    img.onerror = () => falha(new Error('o desenho da Juba não carregou'));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+async function gerarCartao(dados) {
+  if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) { /* segue com a fonte do sistema */ } }
+  const tela = document.createElement('canvas');
+  tela.width = LADO_CARTAO; tela.height = LADO_CARTAO;
+  const ctx = tela.getContext('2d');
+  const fundo = ctx.createLinearGradient(0, 0, LADO_CARTAO, LADO_CARTAO);
+  fundo.addColorStop(0, '#FFF0F7'); fundo.addColorStop(1, '#EADCFF');
+  ctx.fillStyle = fundo; ctx.fillRect(0, 0, LADO_CARTAO, LADO_CARTAO);
+  ctx.fillStyle = 'rgba(155,93,229,0.10)';
+  for (let y = 30; y < LADO_CARTAO; y += 60) for (let x = (y / 60) % 2 ? 30 : 60; x < LADO_CARTAO; x += 60) { ctx.beginPath(); ctx.arc(x, y, 4, 0, 6.29); ctx.fill(); }
+  ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = '#9B5DE5'; ctx.lineWidth = 10;
+  ctx.beginPath(); ctx.roundRect(60, 60, LADO_CARTAO - 120, LADO_CARTAO - 120, 48); ctx.fill(); ctx.stroke();
+  const titulo = '"Fredoka One", "Nunito", system-ui, sans-serif';
+  const corpo = '"Nunito", system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#9B5DE5'; ctx.font = '64px ' + titulo; ctx.fillText('Candy Math', LADO_CARTAO / 2, 170);
+  ctx.fillStyle = '#FF6B9D'; ctx.font = '700 34px ' + corpo; ctx.fillText(dados.tipo, LADO_CARTAO / 2, 225);
+  try {
+    const img = await imagemDoMascote();
+    ctx.drawImage(img, LADO_CARTAO / 2 - 190, 250, 380, 520);
+  } catch (e) { /* sem o desenho, o cartão sai com o texto */ }
+  ctx.fillStyle = '#3B2412'; ctx.font = '60px ' + titulo;
+  const linhas = quebrarTexto(ctx, dados.titulo, LADO_CARTAO - 220).slice(0, 2);
+  linhas.forEach((l, i) => ctx.fillText(l, LADO_CARTAO / 2, 840 + i * 66));
+  ctx.fillStyle = '#7A6B8A'; ctx.font = '700 34px ' + corpo;
+  const sub = quebrarTexto(ctx, dados.detalhe, LADO_CARTAO - 220).slice(0, 2);
+  sub.forEach((l, i) => ctx.fillText(l, LADO_CARTAO / 2, 840 + linhas.length * 66 + 10 + i * 42));
+  const blob = await new Promise((ok) => tela.toBlob(ok, 'image/png'));
+  return { blob: blob, linhas: [dados.tipo, dados.titulo, dados.detalhe], largura: tela.width, altura: tela.height };
+}
+function quemNoCartao() {
+  const p = window.CM_CONTAS && CM_CONTAS.ativo();
+  return p && p.apelido ? String(p.apelido).replace(/[<>]/g, '').slice(0, 24) : '';
+}
+async function baixarCartao(dados, nomeArquivo) {
+  let feito;
+  try { feito = await gerarCartao(dados); } catch (e) { showToast('Não deu para montar o cartão neste aparelho.'); return null; }
+  if (!feito.blob) { showToast('Não deu para montar o cartão neste aparelho.'); return null; }
+  const url = URL.createObjectURL(feito.blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nomeArquivo;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  showToast('Cartão baixado: ' + nomeArquivo + '.');
+  return feito;
+}
+function baixarCartaoMedalha(id) {
+  const c = CM_METAS.conquistas(G.metas, dadosDasConquistas(), Date.now()).find((x) => x.id === id && x.ganha);
+  if (!c) return null;
+  const quem = quemNoCartao();
+  return baixarCartao({ tipo: 'Nova medalha', titulo: c.nome,
+    detalhe: (quem ? quem + ' · ' : '') + 'Conquistada em ' + new Date(c.quando).toLocaleDateString('pt-BR') },
+  'candy-math-medalha-' + id + '.png');
+}
+function baixarCartaoRodada() {
+  if (!ultimaRodada) return null;
+  const r = ultimaRodada;
+  const quem = quemNoCartao();
+  return baixarCartao({ tipo: r.jogo, titulo: r.feitos + ' de ' + r.total + ' acertos',
+    detalhe: (quem ? quem + ' · ' : '') + '+' + r.ganho + ' estrelas na rodada' }, 'candy-math-rodada.png');
+}
+
 // ── Combinados da família: tempo ativo e meta semanal ──
 let ultimoGesto = Date.now();
 let avisouLimite = '';
@@ -560,6 +648,20 @@ function pintarConquistas() {
     li.appendChild(desc);
     li.appendChild(situacao);
     li.appendChild(premio);
+    if (c.ganha) {
+      const baixar = document.createElement('button');
+      baixar.type = 'button';
+      baixar.className = 'conq-baixar';
+      baixar.setAttribute('data-acao', 'baixarCartaoMedalha');
+      baixar.setAttribute('data-args', JSON.stringify([c.id]));
+      baixar.setAttribute('aria-label', 'Baixar o cartão da medalha ' + c.nome);
+      const ic = document.createElement('i');
+      ic.className = 'fa-solid fa-download';
+      ic.setAttribute('aria-hidden', 'true');
+      baixar.appendChild(ic);
+      baixar.appendChild(document.createTextNode(' Baixar cartão'));
+      li.appendChild(baixar);
+    }
     grade.appendChild(li);
   });
   const ganhas = lista.filter((c) => c.ganha).length;
@@ -2883,6 +2985,8 @@ function showRoulFeedback(msg) { $('roulFeedbackMsg').textContent = msg; $('roul
 //     A rodada é o que regula o nível: rodada cheia sobe um degrau,
 //     um acerto ou nenhum volta um. O ano continua sendo escolha do jogador.
 // ──────────────────────────────────────────────────
+// O último resultado de rodada, para o cartão que a criança pode baixar.
+let ultimaRodada = null;
 function finishRound(mode) {
   const feitos = G.roundCorrect;
   const total = totalDaRodada(mode);
@@ -2922,6 +3026,8 @@ function finishRound(mode) {
     ? 'Você praticou: ' + G.trabalhados.join(' · ')
     : '';
 
+  ultimaRodada = { modo: mode, feitos: feitos, total: total, ganho: ganho,
+    jogo: (window.CM_TUTORIAL && CM_TUTORIAL.textos[mode] && CM_TUTORIAL.textos[mode].nome) || 'Candy Math' };
   openModal('modalLevelUp');
   spawnLevelUpConfetti();
   playSound('levelup');
@@ -4008,6 +4114,8 @@ const ACOES_DOS_BOTOES = {
   ouvirExplicacao: function ()        { ouvirExplicacao(); },
   criarDesafio:  function ()          { criarDesafio(); },
   liberarTempo:  function ()          { liberarTempo(); },
+  baixarCartaoMedalha: function (id)  { baixarCartaoMedalha(id); },
+  baixarCartaoRodada: function ()     { baixarCartaoRodada(); },
   jogarDesafio:  function ()          { jogarDesafio(); },
   spinRoulette:  function ()          { spinRoulette(); },
   startMode:     function (modo)      { startMode(modo); },

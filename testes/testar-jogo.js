@@ -799,6 +799,15 @@ async function main() {
     colecao.bloqueadas.every((b) => /^Ainda não · /.test(b.sit) && b.cadeado && b.desc.length > 20), colecao.bloqueadas);
   confere('o resumo da coleção bate com o botão de Recordes', colecao.resumo === botaoMedalhas + ' medalhas', { resumo: colecao.resumo, botaoMedalhas });
   confere('o foco do teclado entra na coleção', colecao.foco);
+  const cartaoPng = await avaliar(c, `(async function(){
+    var botoes=document.querySelectorAll('#conqGrade .conq-ganha .conq-baixar').length, bloqueadas=document.querySelectorAll('#conqGrade .conq-bloqueada .conq-baixar').length;
+    var r=await gerarCartao({ tipo:'Nova medalha', titulo:'Primeiro domínio', detalhe:'Conquistada hoje' });
+    var vazio=quemNoCartao();
+    return { botoes:botoes, bloqueadas:bloqueadas, tipo:r.blob.type, kb:Math.round(r.blob.size/1024), lado:[r.largura, r.altura], linhas:r.linhas, vazio:vazio };
+  })()`, true);
+  confere('cada medalha ganha tem o botão Baixar cartão; as bloqueadas não', cartaoPng.botoes === colecao.ganhas.length && cartaoPng.bloqueadas === 0, cartaoPng);
+  confere('o cartão é uma imagem PNG de 1080 por 1080', cartaoPng.tipo === 'image/png' && cartaoPng.lado[0] === 1080 && cartaoPng.lado[1] === 1080 && cartaoPng.kb > 20, cartaoPng);
+  confere('o cartão leva a medalha e não leva apelido quando não há perfil', cartaoPng.linhas[1] === 'Primeiro domínio' && cartaoPng.vazio === '', cartaoPng);
   // Medalhas abre por cima de Recordes: fechar só ela devolve o foco ao botão
   // que a abriu, e não ao <body> (o teclado perdia o lugar).
   await avaliar(c, "document.querySelector('#modalConquistas .btn-close-modal').click(); true");
