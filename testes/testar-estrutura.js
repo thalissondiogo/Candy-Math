@@ -28,7 +28,7 @@ function existe(relativo) {
 // ── 1. arquivos obrigatórios na raiz ──────────────────────
 ['index.html', 'privacidade.html', 'cookies.html', 'style.css', 'script.js', 'conteudo.js', 'banco-itens.js',
   'config.js', 'nuvem.js', 'duelo.js', 'avaliacao.js', 'como-jogar.js', 'guarda-roupa.js',
-  'contas.js', 'privacidade.js', 'mascote.js', 'narracao.js',
+  'contas.js', 'privacidade.js', 'mascote.js', 'metas.js', 'narracao.js',
   'package.json', 'vercel.json', 'README.md', '.env.example', '.gitignore',
   'supabase/schema.sql', 'testes/_raiz.js', 'testes/_navegador.js',
 ].forEach(existe);

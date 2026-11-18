@@ -59,6 +59,7 @@ conteudo.js           motor de conteúdo: 55 geradores com valores calculados
 banco-itens.js        banco autoral: 311 situações escritas + 96 afirmações V/F
 guarda-roupa.js       catálogo da loja: 79 peças, preços, abas e conjuntos
 mascote.js            Juba Candy em SVG: desenho por peça, recortes e figurino
+metas.js              contagem por dia e semana (missões, dias de atividade, conquistas), só no aparelho
 contas.js             conta de quem acompanha, perfis de estudante, PIN e porta do adulto
 privacidade.js        autorização por finalidade: o que pode sair, para onde, e a revogação
 como-jogar.js         explicação de regras que entra antes da primeira partida de cada jogo
@@ -656,6 +657,7 @@ npm run jogo     # uma partida completa, a loja e o figurino, clicando nos botõ
 | `node testes/testar-politicas-sql.js` | invariantes de autorização no schema, na migração e nos arquivos do navegador |
 | `node testes/testar-autorizacao.js` | A0: o interruptor do duelo é lido antes de cada chamada de rede. A parte remota pede três contas de teste em `.env` e, sem elas, se declara **não executada** |
 | `node testes/testar-narracao.js` | a função de voz com `fetch` e `env` falsos: validação, limite, upstream, o cache de áudio no Supabase (procura, acerto, gravação, poda e as quedas do banco), a recusa sem autorização e a revogação no meio da partida — e um aviso na primeira linha de que é simulado |
+| `node testes/testar-metas.js` | a contagem de `metas.js` sem navegador: dia e semana no fuso do aparelho, viradas com o jogo aberto, placar por unidade temática, storage hostil e a ausência das metas no pacote da nuvem |
 | `node testes/testar-mascote.js` | as 79 peças: catálogo, desenho de cada uma, vitrine, exclusividade por categoria e a página de pré-visualização |
 | `node testes/validar-banco.js` | os 311 itens e as 96 afirmações: id único, 4 alternativas sem repetição (por valor, não por texto), `valor` batendo com a resposta, unidade válida, código BNCC na lista oficial (`testes/bncc-matematica.txt`) |
 | `node testes/validar-conteudo.js` | os 55 geradores em 9 anos × 4 níveis, cada item do banco, afirmações V/F, os jogos de sequência/ordenação/memória/cruzadinha/balança, as representações em doces, a duplicata numérica e o texto de reserva `(opção N)` |
@@ -665,7 +667,7 @@ npm run jogo     # uma partida completa, a loja e o figurino, clicando nos botõ
 | `node testes/testar-jogo.js` | em navegador real: ano e nível pelos chips, explicação antes da primeira partida, acerto (estrela, sequência, histórico), erro que dá pista e desenho antes de revelar a resposta, revelação que fica parada com o botão "Continuar" até o clique, resumo da rodada, rodada inteira que sobe o degrau, verdadeiro/falso, loja (catálogo, abas, preço travado), compra que desconta estrela, peça que entra no SVG da Juba, experimentar sem comprar, máscara e óculos que não se empilham, tirar tudo, e recarregar com o figurino e o progresso intactos |
 
 Cada validador resolve o caminho da raiz por `testes/_raiz.js`, então funciona
-de qualquer diretório. Os dez do `npm test` terminam com código 1 quando
+de qualquer diretório. Os onze do `npm test` terminam com código 1 quando
 encontram erro. `testar-contas.js` e `testar-jogo.js` precisam do servidor na
 porta 8765 e sobem o próprio navegador, nas portas 9334 e 9335. Os dois trazem
 a aba para frente (`Page.bringToFront`): sem isso o Chromium headless não

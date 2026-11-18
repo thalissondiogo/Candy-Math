@@ -582,6 +582,31 @@ async function main() {
   await avaliar(c, 'goHub()');
   await espera(400);
 
+  // ── 13c. as metas contam o mesmo que o histórico, sem tocar nele ──
+  /* O teste começou com o storage limpo e tudo foi jogado hoje: cada desfecho que
+     entrou em G.hist tem de ter entrado uma vez nas metas do dia e da semana.
+     Elas ficam num campo próprio do save, fora do formato de hist. */
+  const metas = await avaliar(c, `(function(){
+    var f=0,k=0; Object.keys(G.hist).forEach(function(n){ f+=G.hist[n].feitas; k+=G.hist[n].certas; });
+    var s=window.__J.save();
+    return { feitas:f, certas:k, m:G.metas, hoje:CM_METAS.diaLocal(Date.now()),
+      semana:CM_METAS.semanaLocal(Date.now()), salvo:s&&s.metas, histSalvo:s&&s.hist,
+      formatoHist:Object.keys(G.hist).every(function(n){ return Object.keys(G.hist[n]).sort().join()==='certas,feitas'; }) };
+  })()`);
+  confere('cada questão do histórico entrou uma vez nas metas do dia',
+    metas.m.dia.respostas === metas.feitas && metas.m.dia.acertos === metas.certas && metas.feitas > 0,
+    { hist: [metas.feitas, metas.certas], dia: [metas.m.dia.respostas, metas.m.dia.acertos] });
+  confere('a semana soma o mesmo que o dia no primeiro dia',
+    metas.m.semana.respostas === metas.m.dia.respostas && metas.m.semana.chave === metas.semana, metas.m.semana);
+  confere('o placar por unidade fecha com o total do dia',
+    Object.keys(metas.m.dia.porUnidade).reduce(function (t, u) { return t + metas.m.dia.porUnidade[u].feitas; }, 0) === metas.m.dia.respostas,
+    metas.m.dia.porUnidade);
+  confere('hoje virou dia de atividade, uma vez só', JSON.stringify(metas.m.dias) === JSON.stringify([metas.hoje]), metas.m.dias);
+  confere('as rodadas fechadas entraram nas metas (quiz, degrau e verdadeiro/falso)', metas.m.dia.rodadas >= 3, metas.m.dia);
+  confere('as metas são gravadas no save do estudante', JSON.stringify(metas.salvo) === JSON.stringify(metas.m),
+    { salvo: metas.salvo, memoria: metas.m });
+  confere('o histórico continua no formato { feitas, certas }', metas.formatoHist);
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);
@@ -590,7 +615,8 @@ async function main() {
   await avaliar(c, `window.__J.clicarPeca(${JSON.stringify(oculos)},'Vestir')`);
   await espera(300);
   const guardado = await avaliar(c, `({chave:CM_CONTAS.chaveDoSave(),stars:G.stars,ano:G.ano,nivel:G.nivel,
-    acertos:G.totalCorrect,owned:G.owned.slice().sort(),equip:G.equip,seq:G.bestStreak,hist:Object.keys(G.hist).length})`);
+    acertos:G.totalCorrect,owned:G.owned.slice().sort(),equip:G.equip,seq:G.bestStreak,hist:Object.keys(G.hist).length,
+    metas:JSON.stringify(G.metas)})`);
   confere('o save do convidado fica na chave sem perfil', guardado.chave === 'candymath_v3', guardado.chave);
   confere('as duas peças estão vestidas antes de recarregar',
     guardado.equip[slotBarato] === barato && guardado.equip.glasses === oculos, guardado.equip);
@@ -602,12 +628,14 @@ async function main() {
   await avaliar(c, "document.getElementById('btnPlay').click()");
   await espera(600);
   const voltou = await avaliar(c, `({stars:G.stars,ano:G.ano,nivel:G.nivel,acertos:G.totalCorrect,
-    owned:G.owned.slice().sort(),equip:G.equip,seq:G.bestStreak,hist:Object.keys(G.hist).length})`);
+    owned:G.owned.slice().sort(),equip:G.equip,seq:G.bestStreak,hist:Object.keys(G.hist).length,
+    metas:JSON.stringify(G.metas)})`);
   confere('as estrelas voltam depois de recarregar', voltou.stars === guardado.stars, { guardado: guardado.stars, voltou: voltou.stars });
   confere('o ano e o degrau escolhidos voltam', voltou.ano === guardado.ano && voltou.nivel === guardado.nivel, voltou);
   confere('o total de acertos volta', voltou.acertos === guardado.acertos);
   confere('a melhor sequência volta', voltou.seq === guardado.seq);
   confere('o histórico por conteúdo volta inteiro', voltou.hist === guardado.hist && voltou.hist > 0, voltou);
+  confere('as metas do dia e a lista de dias voltam iguais', voltou.metas === guardado.metas, { guardado: guardado.metas, voltou: voltou.metas });
   confere('a caixa de peças volta', JSON.stringify(voltou.owned) === JSON.stringify(guardado.owned), voltou.owned);
   confere('o figurino volta peça por peça', JSON.stringify(voltou.equip) === JSON.stringify(guardado.equip),
     { guardado: guardado.equip, voltou: voltou.equip });
@@ -631,6 +659,32 @@ async function main() {
     (await avaliar(c, 'window.__J.vitrine()')).length === guardado.owned.length
     && (await avaliar(c, 'window.__J.vitrine().every(function(id){return G.owned.indexOf(id)>=0;})')),
     await avaliar(c, 'window.__J.vitrine()'));
+
+  // ── 14b. apagar os dados do aparelho leva as metas junto ──
+  await avaliar(c, 'closeAllModals(); apagarLocal(true); true');
+  await espera(300);
+  const apagado = await avaliar(c, '({m:G.metas, s:(window.__J.save()||{}).metas, stars:G.stars})');
+  confere('apagar zera as metas na memória',
+    apagado.m.dias.length === 0 && apagado.m.dia.respostas === 0 && apagado.m.semana.rodadas === 0, apagado.m);
+  confere('apagar zera as metas gravadas', !!apagado.s && apagado.s.dias.length === 0 && apagado.s.dia.respostas === 0, apagado.s);
+
+  // ── 14c. um save de antes das metas abre inteiro ──
+  /* Quem já jogava tem um save sem o campo metas. Ele tem de abrir com o
+     progresso intacto e as metas começando do zero, sem aviso de dano. */
+  await avaliar(c, `localStorage.setItem('candymath_v3', JSON.stringify({stars:77, ano:4, nivel:2, totalCorrect:9,
+    streak:0, bestStreak:5, soundOn:true, aprendidas:['Frações'], hist:{'Frações':{feitas:6,certas:4}},
+    equip:{}, owned:[], duelos:{}, provas:[], comoJogarVisto:{quiz:true}, desde:1760000000000})); true`);
+  await abrir(c, 390, 844, BASE);
+  await espera(600);
+  await avaliar(c, dentro);
+  const antigo = await avaliar(c, `({stars:G.stars, ano:G.ano, nivel:G.nivel, hist:G.hist, m:G.metas,
+    danificado:localStorage.getItem('candymath_v3_danificado'), hoje:CM_METAS.diaLocal(Date.now())})`);
+  confere('save sem metas abre com estrelas, ano e nível de antes',
+    antigo.stars === 77 && antigo.ano === 4 && antigo.nivel === 2, antigo);
+  confere('save sem metas mantém o histórico como estava', JSON.stringify(antigo.hist) === '{"Frações":{"feitas":6,"certas":4}}', antigo.hist);
+  confere('save sem metas começa as metas do zero, no dia de hoje',
+    antigo.m.dias.length === 0 && antigo.m.dia.respostas === 0 && antigo.m.dia.chave === antigo.hoje, antigo.m);
+  confere('save sem metas não é tratado como danificado', antigo.danificado === null);
 
   // ── 15. nenhum erro de console no percurso ──
   const gritos = c.eventos.filter((e) =>

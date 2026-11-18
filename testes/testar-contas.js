@@ -203,11 +203,17 @@ async function main() {
   confere('dois perfis, duas chaves de save distintas', idManu !== idTeo);
 
   // ── 4. escolher Téo: progresso zerado, nada da Manu ──
+  // Há metas na memória de quem jogou antes; o Téo ainda não tem save, então é a
+  // troca de estudante — não a leitura do save — que tem de zerá-las.
+  await avaliar(c, "CM_METAS.registrarResposta(G.metas,{u:'numeros',acertou:true},Date.now());true");
   await clicar(c, '#entradaCorpo', 'Téo');
   await esperarPor(c, "window.__T.tela()==='screenHub'", 40000);
   confere('escolher perfil leva ao hub', (await tela(c)) === 'screenHub', await tela(c));
   const teo = await avaliar(c, "({quem:CM_CONTAS.ativo().apelido,ano:G.ano,stars:G.stars,owned:G.owned.slice(),chave:CM_CONTAS.chaveDoSave(),barra:document.getElementById('hubEstudanteNome').textContent,acao:document.getElementById('hubEstudanteAcaoTexto').textContent})");
   confere('Téo começa do zero', teo.stars === 0 && teo.owned.length === 0, teo);
+  const metasNovo = await avaliar(c, 'G.metas');
+  confere('perfil novo começa sem as metas de quem jogou antes',
+    metasNovo.dia.respostas === 0 && metasNovo.dias.length === 0, metasNovo);
   confere('ano do perfil aplicado ao jogo', teo.ano === 7, teo);
   confere('save do jogo aponta para a chave do perfil', teo.chave === 'candymath_v3#' + idTeo, teo);
   confere('barra mostra quem joga', teo.barra === 'Téo · 7º ano' && teo.acao === 'Trocar', teo);
@@ -216,6 +222,16 @@ async function main() {
   await espera(150);
   confere('progresso do Téo na chave dele', (await avaliar(c, `(window.__T.save('candymath_v3#${idTeo}')||{}).stars`)) === 90);
   confere('progresso da Manu intacto', (await avaliar(c, `(window.__T.save('candymath_v3#${idManu}')||{}).stars`)) === 640);
+  // As metas (dias de atividade, contagem do dia) seguem a mesma chave do perfil.
+  // A questão passa pelo caminho do jogo: registrarTrabalho e registrarResultado.
+  await avaliar(c, "registrarTrabalho({o:'Teste de metas',u:'numeros'});registrarResultado(true);"
+    + "registrarTrabalho({o:'Teste de metas',u:'numeros'});registrarResultado(false);saveState();true");
+  const metasTeo = await avaliar(c, `(window.__T.save('candymath_v3#${idTeo}')||{}).metas`);
+  confere('as metas do Téo vão para a chave dele',
+    !!metasTeo && metasTeo.dia.respostas === 2 && metasTeo.dia.acertos === 1 && metasTeo.dias.length === 1, metasTeo);
+  const metasManuAntes = await avaliar(c, `(window.__T.save('candymath_v3#${idManu}')||{}).metas`);
+  confere('as metas da Manu não recebem as respostas do Téo',
+    !metasManuAntes || (metasManuAntes.dia.respostas === 0 && metasManuAntes.dias.length === 0), metasManuAntes);
 
   // ── 5. trocar para Manu: PIN errado, depois certo ──
   await avaliar(c, "document.getElementById('hubEstudanteAcao').click()");
@@ -243,6 +259,9 @@ async function main() {
   const manu = await avaliar(c, "({quem:CM_CONTAS.ativo()&&CM_CONTAS.ativo().apelido,stars:G.stars,ano:G.ano,hat:(G.equip||{}).hat,tela:window.__T.tela()})");
   confere('PIN certo abre o perfil', manu.quem === 'Manu' && manu.tela === 'screenHub', manu);
   confere('Manu recebe o próprio progresso, não o do Téo', manu.stars === 640 && manu.ano === 3 && manu.hat === 'hat_crown', manu);
+  const metasManu = await avaliar(c, 'G.metas');
+  confere('Manu entra com as próprias metas, sem os dias do Téo',
+    metasManu.dia.respostas === 0 && metasManu.semana.respostas === 0 && metasManu.dias.length === 0, metasManu);
 
   // ── 6. porta do adulto: boletim, apagamento e nuvem trancam ──
   await avaliar(c, 'CM_CONTAS.trancarAdulto()');

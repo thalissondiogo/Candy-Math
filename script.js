@@ -39,6 +39,9 @@ const G = {
   // ficam vazios e nada sobe para lugar nenhum.
   codigoVinculo: '',
   apelidoCrianca: '',
+  // Contagem por dia e por semana para missões, dias de atividade e
+  // conquistas (metas.js). Fica separada de hist e só no aparelho.
+  metas: window.CM_METAS.vazio(),
 };
 
 // ──────────────────────────────────────────────────
@@ -158,6 +161,7 @@ function registrarResultado(acertou) {
   const h = G.hist[nome] || (G.hist[nome] = { feitas: 0, certas: 0 });
   h.feitas++;
   if (acertou) { h.certas++; }
+  CM_METAS.registrarResposta(G.metas, { u: itemAtual.u, acertou: acertou }, Date.now());
 }
 
 // As alternativas chegam com a correta em alt[0]; aqui elas são
@@ -619,6 +623,7 @@ function trocarEstudante(perfil) {
     duelos: { jogados: 0, ganhos: 0, achados: 0, melhorTempo: 0, recorde: [] },
     provas: [], comoJogarVisto: {}, desde: Date.now(),
     codigoVinculo: '', apelidoCrianca: perfil ? perfil.apelido : '',
+    metas: CM_METAS.vazio(),
   });
   recentes = [];
   resetarMonte();
@@ -2332,6 +2337,7 @@ function finishRound(mode) {
   else if (feitos <= 1 && G.nivel > 1) G.nivel--;
 
   G.stars += bonus;
+  CM_METAS.registrarRodada(G.metas, { acertos: feitos, total: total }, Date.now());
   saveState();
 
   document.querySelector('.lu-title').textContent =
@@ -2727,6 +2733,7 @@ function apagarLocal(semAviso) {
   G.desde = Date.now();
   G.codigoVinculo = '';
   G.apelidoCrianca = '';
+  G.metas = CM_METAS.vazio();
   resetarMonte();
   const guardado = gravarLocal();
   closeAllModals();
@@ -3019,6 +3026,7 @@ function gravarLocal() {
       desde:        G.desde,
       codigoVinculo: G.codigoVinculo,
       apelidoCrianca: G.apelidoCrianca,
+      metas:        G.metas,
     }));
     return true;
   } catch (e) {
@@ -3157,6 +3165,8 @@ function loadState() {
   // espaços e sem quebra — é um código de 6 letras ou um apelido, não HTML.
   G.codigoVinculo   = typeof d.codigoVinculo === 'string' ? d.codigoVinculo.replace(/[^\w-]/g, '').slice(0, 12) : '';
   G.apelidoCrianca  = typeof d.apelidoCrianca === 'string' ? d.apelidoCrianca.replace(/[<>]/g, '').slice(0, 30) : '';
+  // Save de antes das metas não tem o campo: começa vazio, sem tocar no resto.
+  G.metas           = CM_METAS.sanitizar(d.metas, Date.now());
   const sIcon = $('soundIcon');
   if (sIcon) sIcon.className = G.soundOn ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
 }
