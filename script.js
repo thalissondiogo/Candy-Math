@@ -162,20 +162,83 @@ function registrarResultado(acertou) {
   h.feitas++;
   if (acertou) { h.certas++; }
   CM_METAS.registrarResposta(G.metas, { u: itemAtual.u, acertou: acertou }, Date.now());
-  premiarDias();
+  premiarMetas();
 }
 
-// Marco de dias seguidos (3, 7, 14, 30): o prêmio entra no saldo e a notícia é
-// dada em texto e para o leitor de tela. metas.js anota o marco na hora, então
-// nenhum é pago duas vezes. O laço tem teto: no máximo um giro por marco que
+// Marcos de dias seguidos (3, 7, 14, 30) e missões cumpridas: o prêmio entra
+// no saldo e a notícia sai num aviso só — dois avisos juntos fariam o leitor de
+// tela ler apenas o último. metas.js anota cada pagamento na hora, então nada é
+// pago duas vezes. O laço dos marcos tem teto: no máximo um giro por marco que
 // existe, para que um defeito na anotação nunca trave a tela.
-function premiarDias() {
+function premiarMetas() {
+  const agora = Date.now();
+  const recados = [];
   for (let i = 0; i < CM_METAS.MARCOS_DIAS.length; i++) {
-    const marco = CM_METAS.colherMarco(G.metas, Date.now());
+    const marco = CM_METAS.colherMarco(G.metas, agora);
     if (!marco) break;
     G.stars += marco.estrelas;
-    showToast(marco.dias + ' dias seguidos estudando! Ganhou ' + marco.estrelas + ' estrelas.');
+    recados.push(marco.dias + ' dias seguidos estudando! Ganhou ' + marco.estrelas + ' estrelas.');
   }
+  CM_METAS.colherMissoes(G.metas, agora).forEach((m) => {
+    G.stars += m.estrelas;
+    recados.push('Missão cumprida: ' + m.texto + '. Ganhou ' + m.estrelas + ' estrelas.');
+  });
+  if (recados.length) showToast(recados.join(' '));
+}
+
+// O cartão de missões do hub. Montado por DOM e textContent: o texto vem do
+// catálogo de metas.js, mas nenhum texto vira HTML por princípio.
+function pintarMissoes() {
+  const listas = { dia: $('missoesDia'), semana: $('missoesSemana') };
+  if (!listas.dia || !listas.semana) return;
+  listas.dia.textContent = '';
+  listas.semana.textContent = '';
+  CM_METAS.missoes(G.metas, Date.now()).forEach((m) => {
+    const li = document.createElement('li');
+    li.className = 'hm-item' + (m.feita ? ' hm-feita' : '');
+    const texto = document.createElement('span');
+    texto.className = 'hm-texto';
+    texto.textContent = m.texto;
+    const premio = document.createElement('span');
+    premio.className = 'hm-premio';
+    premio.textContent = '+' + m.estrelas + ' ';
+    const estrela = document.createElement('i');
+    estrela.className = 'fa-solid fa-star';
+    estrela.setAttribute('aria-hidden', 'true');
+    const sr = document.createElement('span');
+    sr.className = 'sr-only';
+    sr.textContent = 'estrelas';
+    premio.appendChild(estrela);
+    premio.appendChild(sr);
+    const barra = document.createElement('div');
+    barra.className = 'hm-barra';
+    barra.setAttribute('role', 'progressbar');
+    barra.setAttribute('aria-valuemin', '0');
+    barra.setAttribute('aria-valuemax', String(m.alvo));
+    barra.setAttribute('aria-valuenow', String(m.valor));
+    barra.setAttribute('aria-label', m.texto);
+    barra.setAttribute('aria-valuetext', m.feita ? 'Concluída' : m.valor + ' de ' + m.alvo);
+    const enchido = document.createElement('span');
+    enchido.style.width = Math.round((m.valor / m.alvo) * 100) + '%';
+    barra.appendChild(enchido);
+    // Concluída se diz com ícone e palavra, não só com a cor da barra.
+    const conta = document.createElement('span');
+    conta.className = 'hm-conta';
+    if (m.feita) {
+      const ok = document.createElement('i');
+      ok.className = 'fa-solid fa-circle-check';
+      ok.setAttribute('aria-hidden', 'true');
+      conta.appendChild(ok);
+      conta.appendChild(document.createTextNode(' Concluída'));
+    } else {
+      conta.textContent = m.valor + ' de ' + m.alvo;
+    }
+    li.appendChild(texto);
+    li.appendChild(premio);
+    li.appendChild(barra);
+    li.appendChild(conta);
+    listas[m.escopo].appendChild(li);
+  });
 }
 
 // "3 dias", "1 dia". Sem sequência ativa a ficha some: zero dias não é recado
@@ -693,6 +756,7 @@ function updateHubUI() {
   if (desc) desc.textContent = DESCRICAO_NIVEL[G.nivel - 1];
   pintarQuemJoga();
   pintarDias();
+  pintarMissoes();
   marcarChips();
   pintarMascotes();
 }
@@ -2365,7 +2429,7 @@ function finishRound(mode) {
 
   G.stars += bonus;
   CM_METAS.registrarRodada(G.metas, { acertos: feitos, total: total }, Date.now());
-  premiarDias();
+  premiarMetas();
   saveState();
 
   document.querySelector('.lu-title').textContent =

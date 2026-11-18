@@ -262,6 +262,9 @@ async function main() {
   const metasManu = await avaliar(c, 'G.metas');
   confere('Manu entra com as próprias metas, sem os dias do Téo',
     metasManu.dia.respostas === 0 && metasManu.semana.respostas === 0 && metasManu.dias.length === 0, metasManu);
+  const missoesManu = await avaliar(c, 'CM_METAS.missoes(G.metas, Date.now())');
+  confere('as missões da Manu não carregam o acerto do Téo',
+    missoesManu.length === 4 && missoesManu.every((m) => m.valor === 0 && !m.feita), missoesManu);
 
   // ── 6. porta do adulto: boletim, apagamento e nuvem trancam ──
   await avaliar(c, 'CM_CONTAS.trancarAdulto()');

@@ -190,6 +190,107 @@ confere('recorde absurdo no storage é descartado', M.sanitizar({ recordeDias: 9
 confere('recorde guardado nunca fica abaixo do que a lista prova',
   M.sanitizar({ dias: ['2026-11-10', '2026-11-11', '2026-11-12'], recordeDias: 1 }, em(2026, 11, 13)).recordeDias === 3);
 
+// ── 5c. missões ─────────────────────────────────────────────
+const CAT = M.MISSOES;
+confere('três diárias e quatro semanais no catálogo', CAT.dia.length === 3 && CAT.semana.length === 4);
+confere('nenhuma missão mede resposta, clique ou tempo: só acerto, rodada boa ou variedade',
+  CAT.dia.concat(CAT.semana).every((m) => ['acertos', 'boas', 'perfeitas', 'assuntos'].indexOf(m.medida) >= 0), CAT);
+confere('nenhuma missão pede uma unidade temática específica',
+  CAT.dia.concat(CAT.semana).every((m) => !/geometria|álgebra|algebra|medidas|dados|números/i.test(m.texto)), CAT);
+confere('prêmio: 15 por diária e 40 por semanal',
+  CAT.dia.every((m) => m.estrelas === 15) && CAT.semana.every((m) => m.estrelas === 40));
+confere('teto da semana jogada todo dia: 290 estrelas (7 × 2 × 15 + 2 × 40)', 7 * 2 * 15 + 2 * 40 === 290);
+let sorteioOk = true;
+const paresDia = {};
+for (let i = 0; i < 365; i++) {
+  const t = em(2026, 1, 1 + i);
+  const d = M.sortearMissoes(M.diaLocal(t), 'dia').map((m) => m.id);
+  const w = M.sortearMissoes(M.semanaLocal(t), 'semana').map((m) => m.id);
+  if (d.length !== 2 || new Set(d).size !== 2 || w.length !== 2 || new Set(w).size !== 2) sorteioOk = false;
+  if (JSON.stringify(d) !== JSON.stringify(M.sortearMissoes(M.diaLocal(t), 'dia').map((m) => m.id))) sorteioOk = false;
+  paresDia[d.join('+')] = 1;
+}
+confere('todo dia e toda semana do ano têm duas missões diferentes, sempre as mesmas para a mesma data', sorteioOk);
+confere('as missões do dia variam ao longo do ano (os três pares aparecem)', Object.keys(paresDia).length === 3, paresDia);
+
+// Uma data em que a missão pedida foi sorteada, para testar cada medida.
+function diaCom(id) {
+  for (let i = 0; i < 400; i++) {
+    const t = em(2026, 1, 1 + i);
+    if (M.sortearMissoes(M.diaLocal(t), 'dia').some((m) => m.id === id)) return t;
+  }
+  return null;
+}
+function semanaCom(id) {
+  for (let i = 0; i < 400; i += 7) {
+    const t = em(2026, 1, 5 + i);
+    if (M.sortearMissoes(M.semanaLocal(t), 'semana').some((m) => m.id === id)) return t;
+  }
+  return null;
+}
+const missao = (st, t, id) => M.missoes(st, t).find((m) => m.id === id);
+
+const tA = diaCom('d_acertos');
+const ma = M.vazio(tA);
+confere('missão começa em zero e não concluída', missao(ma, tA, 'd_acertos').valor === 0 && !missao(ma, tA, 'd_acertos').feita);
+for (let i = 0; i < 12; i++) M.registrarResposta(ma, { u: 'numeros', acertou: false }, tA);
+confere('doze erros não avançam a missão de acertos', missao(ma, tA, 'd_acertos').valor === 0 && M.colherMissoes(ma, tA).length === 0);
+for (let i = 0; i < 7; i++) M.registrarResposta(ma, { u: 'numeros', acertou: true }, tA);
+confere('sete acertos: 7 de 8, ainda não paga', missao(ma, tA, 'd_acertos').valor === 7 && M.colherMissoes(ma, tA).length === 0);
+M.registrarResposta(ma, { u: 'numeros', acertou: true }, tA);
+const pagaA = M.colherMissoes(ma, tA);
+confere('o oitavo acerto cumpre a missão e ela é paga', pagaA.some((m) => m.id === 'd_acertos' && m.estrelas === 15), pagaA);
+for (let i = 0; i < 20; i++) M.registrarResposta(ma, { u: 'numeros', acertou: true }, tA);
+confere('a missão cumprida não é paga de novo', !M.colherMissoes(ma, tA).some((m) => m.id === 'd_acertos'));
+confere('o valor mostrado não passa do alvo', missao(ma, tA, 'd_acertos').valor === 8 && missao(ma, tA, 'd_acertos').feita);
+const recarregada = M.sanitizar(copia(ma), tA + 3600e3);
+confere('depois de recarregar, a missão continua paga e não paga de novo',
+  missao(recarregada, tA, 'd_acertos').feita && !M.colherMissoes(recarregada, tA).some((m) => m.id === 'd_acertos'));
+const amanha = tA + 864e5;
+confere('no dia seguinte as diárias recomeçam do zero, sem dívida do dia anterior',
+  M.missoes(ma, amanha).filter((m) => m.escopo === 'dia').every((m) => m.valor === 0 && !m.feita) && ma.dia.pagas.length === 0,
+  M.missoes(ma, amanha));
+
+const tB = diaCom('d_boas');
+const mb = M.vazio(tB);
+M.registrarRodada(mb, { acertos: 2, total: 5 }, tB);
+confere('rodada com 2 de 5 não é boa', missao(mb, tB, 'd_boas').valor === 0);
+M.registrarRodada(mb, { acertos: 2, total: 3 }, tB);
+confere('rodada curta com 2 de 3 é boa (maioria)', missao(mb, tB, 'd_boas').valor === 1);
+M.registrarRodada(mb, { acertos: 5, total: 5 }, tB);
+confere('rodada perfeita também é boa', missao(mb, tB, 'd_boas').valor === 2 && mb.dia.perfeitas === 1);
+confere('duas rodadas boas cumprem a missão', M.colherMissoes(mb, tB).some((m) => m.id === 'd_boas'));
+
+const tC = diaCom('d_assuntos');
+const mc = M.vazio(tC);
+M.registrarResposta(mc, { u: 'geometria', acertou: false }, tC);
+M.registrarResposta(mc, { u: 'numeros', acertou: true }, tC);
+M.registrarResposta(mc, { u: 'numeros', acertou: true }, tC);
+confere('assunto com erro não conta; dois acertos no mesmo assunto contam um', missao(mc, tC, 'd_assuntos').valor === 1);
+M.registrarResposta(mc, { u: 'medidas', acertou: true }, tC);
+confere('acerto em um segundo assunto cumpre a missão', missao(mc, tC, 'd_assuntos').feita);
+
+const tS = semanaCom('s_perfeitas');
+const ms = M.vazio(tS);
+M.registrarRodada(ms, { acertos: 5, total: 5 }, tS);
+M.registrarRodada(ms, { acertos: 3, total: 3 }, tS + 2 * 864e5);
+const pagaS = M.colherMissoes(ms, tS + 2 * 864e5);
+confere('a semanal soma dias diferentes da mesma semana', pagaS.some((m) => m.id === 's_perfeitas' && m.estrelas === 40), pagaS);
+confere('na segunda-feira seguinte a semanal recomeça',
+  M.missoes(ms, tS + 7 * 864e5).filter((m) => m.escopo === 'semana').every((m) => m.valor === 0 && !m.feita));
+
+// Storage hostil: pagar uma missão que não foi sorteada, repetida ou inventada.
+const tD = diaCom('d_acertos');
+const sorteadasD = M.sortearMissoes(M.diaLocal(tD), 'dia').map((m) => m.id);
+const fora = CAT.dia.map((m) => m.id).filter((id) => sorteadasD.indexOf(id) < 0)[0];
+const forjado = M.sanitizar({ dia: { chave: M.diaLocal(tD), respostas: 3, acertos: 3, rodadas: 1, boas: 4, perfeitas: 9,
+  pagas: ['d_acertos', 'd_acertos', fora, 'inventada', 7] } }, tD);
+confere('storage: só fica paga a missão sorteada, uma vez', JSON.stringify(forjado.dia.pagas) === '["d_acertos"]', forjado.dia.pagas);
+confere('storage: boas nunca passa de rodadas, perfeitas nunca passa de boas', forjado.dia.boas === 1 && forjado.dia.perfeitas === 1, forjado.dia);
+const antigoSemBoas = M.sanitizar({ dia: { chave: M.diaLocal(tD), respostas: 2, acertos: 1, rodadas: 1, perfeitas: 0 } }, tD);
+confere('save da sequência de dias (sem boas e pagas) abre com os dois em zero',
+  antigoSemBoas.dia.boas === 0 && Array.isArray(antigoSemBoas.dia.pagas) && antigoSemBoas.dia.pagas.length === 0, antigoSemBoas.dia);
+
 // ── 6. privacidade: nada disto sobe para a nuvem ────────────
 const nuvem = fs.readFileSync(path.join(RAIZ, 'nuvem.js'), 'utf8');
 const pacote = (nuvem.match(/function pacoteDoProgresso\(\)\s*\{[\s\S]*?\n\}/) || [''])[0];

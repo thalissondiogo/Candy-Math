@@ -40,7 +40,21 @@ function confere(rotulo, condicao, detalhe) {
    um botão em tela escondida aceita .click() e faz o teste passar sem ninguém ter
    jogado, que é exatamente o engano que este arquivo existe para evitar. */
 const dentro = `(function(){
+  /* Medidor só deste teste: soma as estrelas que missões e marcos de dias pagam.
+     As conferências de "acerto vale N estrelas" medem o jogo, e uma missão que
+     se cumpre no meio da rodada (depende do par sorteado no dia) não pode fazer
+     o teste passar ou falhar conforme a data. O jogo em si não muda. */
+  window.__metasPagas = 0;
+  if (!CM_METAS.__medido) {
+    var colherM = CM_METAS.colherMissoes, colherD = CM_METAS.colherMarco;
+    CM_METAS.colherMissoes = function(){ var r = colherM.apply(this, arguments);
+      r.forEach(function(m){ window.__metasPagas += m.estrelas; }); return r; };
+    CM_METAS.colherMarco = function(){ var r = colherD.apply(this, arguments);
+      if (r) window.__metasPagas += r.estrelas; return r; };
+    CM_METAS.__medido = true;
+  }
   window.__J = {
+    jogo: function(){ return G.stars - window.__metasPagas; },
     vis: function(el){ if(!el) return false; var r=el.getBoundingClientRect();
       return r.width>0 && r.height>0 && el.checkVisibility({visibilityProperty:true, opacityProperty:true}); },
     tela: function(){ var a=document.querySelector('.screen.active'); return a?a.id:'nenhuma'; },
@@ -208,12 +222,12 @@ async function main() {
   confere('nenhuma alternativa já vem marcada', alt0.every((a) => !/correct|wrong|reveal/.test(a.cls)), alt0);
 
   // ── 3. acertar soma estrela, sequência e histórico do conteúdo ──
-  const antes = await avaliar(c, '({stars:G.stars,acertos:G.totalCorrect,seq:G.streak,rodada:G.roundCorrect,feitas:G.roundTotal})');
+  const antes = await avaliar(c, '({stars:G.stars,jogo:window.__J.jogo(),acertos:G.totalCorrect,seq:G.streak,rodada:G.roundCorrect,feitas:G.roundTotal})');
   const conteudo1 = await avaliar(c, 'G.currentQ.o');
   await avaliar(c, 'window.__J.responder(true)');
   await espera(200);
-  const depois = await avaliar(c, '({stars:G.stars,acertos:G.totalCorrect,seq:G.streak,rodada:G.roundCorrect,feitas:G.roundTotal,roundStars:G.roundStars})');
-  confere('acerto vale 10 estrelas no quiz', depois.stars - antes.stars === 10, { antes, depois });
+  const depois = await avaliar(c, '({stars:G.stars,jogo:window.__J.jogo(),acertos:G.totalCorrect,seq:G.streak,rodada:G.roundCorrect,feitas:G.roundTotal,roundStars:G.roundStars})');
+  confere('acerto vale 10 estrelas no quiz', depois.jogo - antes.jogo === 10, { antes, depois });
   confere('acerto conta no total e na rodada', depois.acertos === antes.acertos + 1 && depois.rodada === antes.rodada + 1, depois);
   confere('acerto aumenta a sequência', depois.seq === antes.seq + 1, depois);
   confere('barra de estrelas do quiz acompanha', (await texto(c, 'quizStarsBar')) === (await avaliar(c, 'numBR(G.stars)')));
@@ -294,7 +308,7 @@ async function main() {
   if (reforco) confere('a questão de consolidação entrou no lugar da próxima', (await avaliar(c, 'G.currentQ.o')) === q2.o);
 
   // ── 5. a rodada termina dizendo o que foi praticado ──
-  const antesFim = await avaliar(c, '({stars:G.stars,nivel:G.nivel,rodada:G.roundCorrect})');
+  const antesFim = await avaliar(c, '({stars:G.stars,jogo:window.__J.jogo(),nivel:G.nivel,rodada:G.roundCorrect})');
   for (let i = 0; i < 3; i++) {
     await avaliar(c, 'window.__J.responder(true)');
     if (i < 2) confere('avançou para a pergunta ' + (4 + i), await esperaQuiz(4 + i));
@@ -304,8 +318,9 @@ async function main() {
     "Number(getComputedStyle(document.getElementById('modalLevelUp')).opacity)>0.9", 6000));
   confere('resumo celebra sem esconder o resultado', (await texto(c, 'luTitulo')) === 'Rodada concluída!', await texto(c, 'luTitulo'));
   const estrelasFim = await avaliar(c, 'G.stars');
-  confere('quatro acertos em cinco dão bônus de 10', estrelasFim - antesFim.stars === 30 + 10,
-    { antes: antesFim.stars, depois: estrelasFim, acertos: await avaliar(c, 'G.roundCorrect') });
+  const jogoFim = await avaliar(c, 'window.__J.jogo()');
+  confere('quatro acertos em cinco dão bônus de 10', jogoFim - antesFim.jogo === 30 + 10,
+    { antes: antesFim.jogo, depois: jogoFim, saldo: estrelasFim, acertos: await avaliar(c, 'G.roundCorrect') });
   confere('resumo mostra as estrelas ganhas e o bônus',
     /\+\d+/.test((await texto(c, 'luStarsText')) || '') && /bônus/.test((await texto(c, 'luStarsText')) || ''),
     await texto(c, 'luStarsText'));
@@ -327,7 +342,7 @@ async function main() {
   await espera(400);
   confere('na segunda vez o jogo começa direto, sem repetir a explicação',
     (await tela(c)) === 'screenQuiz' && !(await avaliar(c, "window.__J.aberto('modalTuto')")), await tela(c));
-  const antesSubida = await avaliar(c, '({stars:G.stars,nivel:G.nivel})');
+  const antesSubida = await avaliar(c, '({stars:G.stars,jogo:window.__J.jogo(),metas:window.__metasPagas,nivel:G.nivel})');
   for (let i = 0; i < 5; i++) {
     await avaliar(c, 'window.__J.responder(true)');
     if (i < 4) confere('rodada inteira: pergunta ' + (i + 2), await esperaQuiz(i + 2));
@@ -338,8 +353,11 @@ async function main() {
   confere('o jogo explica que o próximo degrau vem mais difícil',
     /mais difícil/.test((await texto(c, 'luPhaseText')) || '') && /→/.test((await texto(c, 'luPhaseText')) || ''),
     await texto(c, 'luPhaseText'));
-  confere('rodada inteira dá bônus de 25', (await avaliar(c, 'G.stars')) - antesSubida.stars === 50 + 25,
-    { antes: antesSubida.stars, depois: await avaliar(c, 'G.stars') });
+  const depoisSubida = await avaliar(c, '({stars:G.stars,jogo:window.__J.jogo(),metas:window.__metasPagas})');
+  confere('rodada inteira dá bônus de 25', depoisSubida.jogo - antesSubida.jogo === 50 + 25, { antesSubida, depoisSubida });
+  confere('o saldo é o que o jogo pagou mais o que as metas pagaram, nada além',
+    depoisSubida.stars - antesSubida.stars === (depoisSubida.jogo - antesSubida.jogo) + (depoisSubida.metas - antesSubida.metas),
+    { antesSubida, depoisSubida });
   await clicar(c, '#modalLevelUp', 'Continuar');
   await espera(300);
 
@@ -512,10 +530,10 @@ async function main() {
   await espera(500);
   confere('verdadeiro/falso abre na tela dele', (await tela(c)) === 'screenTrueFalse', await tela(c));
   confere('afirmação escrita na tela', ((await texto(c, 'tfEquation')) || '').length > 5, await texto(c, 'tfEquation'));
-  const antesTF = await avaliar(c, '({stars:G.stars,seq:G.streak})');
+  const antesTF = await avaliar(c, '({stars:G.stars,jogo:window.__J.jogo(),seq:G.streak})');
   await avaliar(c, 'window.__J.tf(true)');
   await espera(250);
-  confere('acerto no verdadeiro/falso vale a mesma estrela', (await avaliar(c, 'G.stars')) - antesTF.stars === 10);
+  confere('acerto no verdadeiro/falso vale a mesma estrela', (await avaliar(c, 'window.__J.jogo()')) - antesTF.jogo === 10);
   confere('o retorno do verdadeiro/falso aparece',
     await avaliar(c, "document.getElementById('tfFeedback').classList.contains('show') && window.__J.texto('tfFeedbackMsg').length>3"));
   confere('os dois botões travam depois da resposta', await avaliar(c,
@@ -555,7 +573,7 @@ async function main() {
   const pararChuva = "(function(){clearAllGameIntervals();catchEncerrado=true;"
     + "document.querySelectorAll('.catch-item').forEach(function(e){e.remove();});return true;})()";
   const fotoChuva = '(function(){var h=G.hist[G.currentQ.o]||{feitas:0,certas:0};'
-    + 'return {o:G.currentQ.o,feitas:h.feitas,certas:h.certas,stars:G.stars,acertos:G.totalCorrect,seq:G.streak};})()';
+    + 'return {o:G.currentQ.o,feitas:h.feitas,certas:h.certas,stars:window.__J.jogo(),acertos:G.totalCorrect,seq:G.streak};})()';
   await avaliar(c, pararChuva);
   const chuva0 = await avaliar(c, fotoChuva);
   await avaliar(c, 'handleCatchFail(); handleCatchFail(); true');
@@ -636,7 +654,8 @@ async function main() {
     var antes=G.stars, toasts=[];
     for (var i=0;i<5;i++){ registrarTrabalho({o:'Sequência de dias (teste)', u:'numeros'}); registrarResultado(i<3); }
     var depois=G.stars;
-    for (var j=0;j<5;j++){ registrarTrabalho({o:'Sequência de dias (teste)', u:'numeros'}); registrarResultado(true); }
+    // Erros de propósito: provam que o marco não volta sem avançar missão alguma.
+    for (var j=0;j<5;j++){ registrarTrabalho({o:'Sequência de dias (teste)', u:'numeros'}); registrarResultado(false); }
     saveState(); updateHubUI();
     return { ganho:depois-antes, depois:G.stars-depois, marcos:G.metas.marcos.slice(),
       seq:CM_METAS.sequencia(G.metas, agora), aviso:window.__J.aviso().join(' | '),
@@ -647,6 +666,49 @@ async function main() {
   confere('o marco é avisado em texto', /3 dias seguidos estudando! Ganhou 10 estrelas/.test(marco.aviso), marco.aviso);
   confere('o hub mostra 3 dias', marco.ficha === '3 dias' && marco.seq.atual === 3, marco);
   confere('o marco pago fica gravado no save', JSON.stringify(marco.salvo) === '[3]', marco.salvo);
+
+  // ── 13e. missões: cartão no hub, pagamento único e só por acerto ──
+  /* Metas zeradas hoje. Oito acertos em dois assuntos e duas rodadas boas cumprem
+     as duas diárias, seja qual for o par sorteado (acertos, rodadas boas,
+     assuntos); nenhuma semanal chega lá. O pagamento esperado é 2 × 15. */
+  const cartao = await avaliar(c, `(function(){
+    G.metas = CM_METAS.vazio(Date.now()); updateHubUI();
+    var lista=function(id){ return Array.prototype.slice.call(document.querySelectorAll('#'+id+' .hm-item')).map(function(li){
+      var b=li.querySelector('[role=progressbar]');
+      return { texto:li.querySelector('.hm-texto').textContent, conta:li.querySelector('.hm-conta').textContent,
+        valor:b&&b.getAttribute('aria-valuetext'), nome:b&&b.getAttribute('aria-label') }; }); };
+    return { dia:lista('missoesDia'), semana:lista('missoesSemana'), visivel:window.__J.vis(document.getElementById('hubMissoes')),
+      esperado:CM_METAS.missoes(G.metas, Date.now()).map(function(m){ return m.texto; }) };
+  })()`);
+  confere('o cartão de missões aparece no hub', cartao.visivel);
+  confere('duas missões de hoje e duas da semana', cartao.dia.length === 2 && cartao.semana.length === 2, cartao);
+  confere('o cartão mostra as missões sorteadas para hoje e para a semana',
+    JSON.stringify(cartao.dia.concat(cartao.semana).map((m) => m.texto)) === JSON.stringify(cartao.esperado), cartao);
+  confere('cada missão tem barra acessível com nome e valor em texto',
+    cartao.dia.concat(cartao.semana).every((m) => m.nome === m.texto && /^0 de \d+$/.test(m.valor) && m.conta === m.valor), cartao);
+  const missoes = await avaliar(c, `(function(){
+    var agora=Date.now(), antes=G.stars;
+    for (var i=0;i<6;i++){ registrarTrabalho({o:'Missão (teste) '+i, u: i%2 ? 'medidas' : 'numeros'}); registrarResultado(false); }
+    var aposErros=G.stars;
+    for (var k=0;k<8;k++){ registrarTrabalho({o:'Missão (teste) '+k, u: k%2 ? 'medidas' : 'numeros'}); registrarResultado(true); }
+    CM_METAS.registrarRodada(G.metas, {acertos:4, total:5}, agora); premiarMetas();
+    CM_METAS.registrarRodada(G.metas, {acertos:3, total:5}, agora); premiarMetas();
+    var pago=G.stars-antes;
+    premiarMetas(); registrarTrabalho({o:'Missão (teste) x', u:'numeros'}); registrarResultado(true);
+    saveState(); updateHubUI();
+    return { aposErros:aposErros-antes, pago:pago, depois:G.stars-antes-pago, aviso:window.__J.aviso().join(' | '),
+      pagas:G.metas.dia.pagas.slice(), semana:G.metas.semana.pagas.slice(),
+      contas:Array.prototype.slice.call(document.querySelectorAll('#missoesDia .hm-conta')).map(function(e){return e.textContent.trim();}),
+      salvo:(window.__J.save().metas||{}).dia.pagas, stars:G.stars };
+  })()`);
+  confere('seis erros não pagam missão nenhuma', missoes.aposErros === 0, missoes);
+  confere('cumprir as duas diárias paga exatamente 30 estrelas', missoes.pago === 30, missoes);
+  confere('missão cumprida não paga de novo', missoes.depois === 0, missoes);
+  confere('as duas diárias ficam pagas e nenhuma semanal', missoes.pagas.length === 2 && missoes.semana.length === 0, missoes);
+  confere('o cartão marca as duas como Concluída, com palavra e não só cor',
+    missoes.contas.length === 2 && missoes.contas.every((t) => t === 'Concluída'), missoes.contas);
+  confere('a missão cumprida é avisada', /Missão cumprida: .+ Ganhou 15 estrelas/.test(missoes.aviso), missoes.aviso);
+  confere('as missões pagas ficam gravadas no save', JSON.stringify(missoes.salvo) === JSON.stringify(missoes.pagas), missoes);
 
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
@@ -677,7 +739,12 @@ async function main() {
   confere('a melhor sequência volta', voltou.seq === guardado.seq);
   confere('o histórico por conteúdo volta inteiro', voltou.hist === guardado.hist && voltou.hist > 0, voltou);
   confere('as metas do dia e a lista de dias voltam iguais', voltou.metas === guardado.metas, { guardado: guardado.metas, voltou: voltou.metas });
-  confere('a ficha de dias volta depois de recarregar', (await texto(c, 'hubDiasVal')) === '3 dias', await texto(c, 'hubDiasVal'));
+  confere('a ficha de dias volta depois de recarregar', (await texto(c, 'hubDiasVal')) === '1 dia', await texto(c, 'hubDiasVal'));
+  const missoesVolta = await avaliar(c, `({ pagas:G.metas.dia.pagas.slice(), stars:G.stars,
+    contas:Array.prototype.slice.call(document.querySelectorAll('#missoesDia .hm-conta')).map(function(e){return e.textContent.trim();}) })`);
+  confere('as missões cumpridas voltam pagas depois de recarregar, sem pagar de novo',
+    missoesVolta.pagas.length === 2 && missoesVolta.stars === guardado.stars
+    && missoesVolta.contas.every((t) => t === 'Concluída'), missoesVolta);
   confere('a caixa de peças volta', JSON.stringify(voltou.owned) === JSON.stringify(guardado.owned), voltou.owned);
   confere('o figurino volta peça por peça', JSON.stringify(voltou.equip) === JSON.stringify(guardado.equip),
     { guardado: guardado.equip, voltou: voltou.equip });

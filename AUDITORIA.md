@@ -640,3 +640,32 @@ Capturas da revelação nos três aparelhos em `testes/capturas/revelacao-*.png`
 colados de cada comando estão em `RELATORIO-TESTES.md`. **Seis provas continuam
 sem execução real** (item 5) e o duelo em rede segue desligado em `config.js` até
 que as duas primeiras passem — esse é o estado honesto, não um esquecimento.
+
+## D — Observações em aberto para a revisão de privacidade (Fase 5)
+
+Registradas durante a Fase 1 (metas, sequência de dias e missões). Nada aqui foi
+alterado ainda: é a lista do que a revisão de privacidade precisa decidir.
+
+### D1 — A biblioteca do Supabase é baixada ao abrir a página, antes da autorização
+
+`script.js` chama `CM_NUVEM.iniciar()` no carregamento; `iniciar` chama
+`montarCliente` (`nuvem.js`), que, com `supabaseUrl` e chave preenchidos em
+`config.js` (o caso deste repositório), carrega
+`https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js` e
+cria o cliente **sem consultar a autorização por finalidade** (`autorizada()`).
+Conferido em navegador real em 18/11/2026: a requisição ao jsdelivr acontece
+em toda abertura do jogo, com ou sem conta, com ou sem consentimento.
+
+O que **não** acontece: nenhum dado da criança sobe — `aoSalvar` e
+`subirProgresso` continuam barrados por `autorizada('nuvem')`. O que acontece:
+o CDN recebe o IP e o momento de cada abertura, e há código de terceiro
+executado na página antes de qualquer decisão do responsável. A revisão deve
+decidir entre adiar `montarCliente` até a primeira ação que precise da nuvem
+(ou até a autorização existir) e servir a biblioteca da própria origem.
+
+### D2 — Metas, sequência de dias e missões ficam só no aparelho
+
+`G.metas` não entra em `pacoteDoProgresso` (`nuvem.js`), e
+`testes/testar-metas.js` confere isso. Entra na exportação de dados dos
+responsáveis (`CM_CONTAS.exportar` lê o save inteiro) e sai em "Apagar dados"
+(`apagarLocal`). Levar esses dados à nuvem exige uma análise própria antes.

@@ -1619,6 +1619,47 @@ body::after {
   display: flex; flex-direction: column; gap: var(--gap-sm);
 }
 .hsl-row { display:flex; align-items:center; gap:8px clamp(8px, 1.2vw, 12px); flex-wrap:wrap; }
+
+/* ===== MISSÕES DO HUB =====
+   Mesma caixa do seletor de ano/nível, para o hub continuar com uma linguagem
+   só. Duas colunas (hoje · semana) quando cabe, uma no celular. Sem animação:
+   a barra muda de tamanho de uma visita para outra, não na frente da criança. */
+.hub-missoes {
+  /* Mora no topo da lista que rola (.hub-body), não nas faixas fixas: a altura
+     das faixas já é contada a dedo, e um cartão a mais ali cortava o fim dele
+     sem rolagem que alcançasse. Largura igual ao miolo dos .hub-cat. */
+  width: calc(100% - 2 * var(--pad)); max-width: calc(var(--max-linha) - 2 * var(--pad));
+  margin: clamp(8px, 1.4vh, 14px) auto 0;
+  padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 14px);
+  background: var(--card);
+  border: 3px solid rgba(155,93,229,0.28);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-card);
+  flex-shrink: 0;
+}
+.hm-titulo {
+  font-family:'Fredoka One',cursive; font-size:clamp(15px, 1.6vw, 19px); color:var(--purple);
+  display:flex; align-items:center; gap:8px; margin:0 0 6px;
+}
+.hm-grupos { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:clamp(8px, 1.4vw, 16px); }
+.hm-sub { font-size:var(--fs-apoio); font-weight:800; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; margin:0 0 4px; }
+.hm-lista { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+.hm-item {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:3px 10px;
+  padding:6px 8px; border-radius:var(--r-sm); background:rgba(155,93,229,0.06);
+}
+.hm-texto { font-size:clamp(13px, 1.3vw, 15px); font-weight:700; color:var(--text); line-height:1.3; }
+.hm-premio { font-family:'Fredoka One',cursive; font-size:clamp(12px, 1.2vw, 14px); color:var(--purple); white-space:nowrap; }
+.hm-premio .fa-star { color:var(--yellow); }
+.hm-barra { height:8px; border-radius:var(--r-pill); background:rgba(155,93,229,0.16); overflow:hidden; }
+.hm-barra > span { display:block; height:100%; background:var(--purple); border-radius:inherit; }
+.hm-conta { font-size:var(--fs-apoio); font-weight:800; color:var(--text2); white-space:nowrap; }
+.hm-feita .hm-barra > span { background:var(--green); }
+.hm-feita .hm-conta { color:#2E7D3A; }
+.hm-nota { margin:8px 2px 0; font-size:var(--fs-apoio); color:var(--text2); line-height:1.35; }
+@media (max-width: 559px) {
+  .hm-grupos { grid-template-columns: minmax(0,1fr); }
+}
 /* Em janela larga o painel vira duas colunas: fichas à esquerda, explicação à
    direita. Antes a metade direita do painel era só espaço vazio. */
 @media (min-width: 900px) {
