@@ -905,6 +905,33 @@ async function main() {
   await avaliar(c, 'goHub(); true');
   await espera(300);
 
+  // ── 13j. mapa de habilidades: conteúdos do ano, situação escrita e BNCC ──
+  await avaliar(c, `(function(){
+    var cont=conteudosDoAno(G.ano), a=cont[0].o, b=cont[1].o, d=cont[2].o;
+    G.hist[a]={feitas:10,certas:9}; G.hist[b]={feitas:4,certas:1}; G.hist[d]={feitas:2,certas:2};
+    openModal('modalRecords'); document.querySelector('#modalRecords .btn-mapa').click(); return true; })()`);
+  await espera(400);
+  const mapa = await avaliar(c, `(function(){
+    var cont=conteudosDoAno(G.ano), a=cont[0].o, b=cont[1].o, d=cont[2].o;
+    var linhas=Array.prototype.slice.call(document.querySelectorAll('#mapaLista .mapa-item')).map(function(li){
+      return { nome:li.querySelector('.mapa-nome').textContent, sit:li.querySelector('.mapa-sit').textContent.trim(),
+        det:li.querySelector('.mapa-det').textContent }; });
+    var por=function(n){ return linhas.filter(function(l){ return l.nome===n; })[0]; };
+    return { total:cont.length, linhas:linhas.length, a:por(a), b:por(b), d:por(d), aberto:window.__J.aberto('modalMapa'),
+      resumo:window.__J.texto('mapaResumo'), proximos:Array.prototype.slice.call(document.querySelectorAll('#mapaProximos li')).map(function(x){return x.textContent;}),
+      unidades:document.querySelectorAll('#mapaLista .mapa-unidade').length, foco:document.getElementById('modalMapa').contains(document.activeElement),
+      codigos:linhas.every(function(l){ return /^EF\\d{2}MA\\d{2} · /.test(l.det); }) };
+  })()`);
+  confere('o mapa abre por Recordes com todos os conteúdos do ano', mapa.aberto && mapa.linhas === mapa.total && mapa.total > 10, mapa);
+  confere('cada conteúdo traz o código BNCC', mapa.codigos, mapa);
+  confere('9 de 10 aparece como Domina', mapa.a.sit === 'Domina' && /9 de 10 acertos/.test(mapa.a.det), mapa.a);
+  confere('1 de 4 aparece como Vale revisar', mapa.b.sit === 'Vale revisar', mapa.b);
+  confere('2 de 2 ainda é Praticando: poucas respostas não são domínio', mapa.d.sit === 'Praticando', mapa.d);
+  confere('o resumo conta as situações do ano', /\d+º ano · \d+ conteúdos: \d+ domina/.test(mapa.resumo), mapa.resumo);
+  confere('os próximos passos começam pelo que pede revisão', mapa.proximos.length >= 1 && mapa.proximos[0].indexOf(mapa.b.nome) === 0, mapa.proximos);
+  confere('o mapa é organizado por unidade temática e recebe o foco', mapa.unidades >= 3 && mapa.foco, mapa);
+  await avaliar(c, "closeAllModals(); true");
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);

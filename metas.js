@@ -504,6 +504,21 @@ function colherMissoes(estado, agora) {
   return novas;
 }
 
+// Situação de um conteúdo para o mapa de habilidades. Os mesmos limites das
+// medalhas (domínio) e do roteiro de Recordes (revisar abaixo de 60% com 3+),
+// para o mapa nunca discordar delas. Poucas respostas certas não são domínio.
+const REVISAR_TAXA = 0.6;
+const REVISAR_FEITAS = 3;
+function situacaoConteudo(h, emRevisao) {
+  const ok = h && Number.isInteger(h.feitas) && Number.isInteger(h.certas) && h.feitas > 0 && h.certas <= h.feitas;
+  if (emRevisao) return 'revisar';
+  if (!ok) return 'novo';
+  const taxa = h.certas / h.feitas;
+  if (h.feitas >= DOMINIO_FEITAS && taxa >= DOMINIO_TAXA) return 'domina';
+  if (h.feitas >= REVISAR_FEITAS && taxa < REVISAR_TAXA) return 'revisar';
+  return 'praticando';
+}
+
 // Conteúdos dominados no histórico, e em quantas unidades temáticas. O histórico
 // guarda o nome do conteúdo; quem sabe a unidade de cada nome é o script.js
 // (unidadeDe), que monta essa tabela a partir do banco e dos geradores.
@@ -645,6 +660,7 @@ const CM_METAS = {
   DOMINIO_FEITAS: DOMINIO_FEITAS,
   DOMINIO_TAXA: DOMINIO_TAXA,
   contarDominios: contarDominios,
+  situacaoConteudo: situacaoConteudo,
   registrarReforco: registrarReforco,
   registrarDegrau: registrarDegrau,
   conquistas: conquistas,

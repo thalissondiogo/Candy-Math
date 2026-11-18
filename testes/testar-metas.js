@@ -462,6 +462,16 @@ confere('storage: só revisões coerentes passam (nome sem tag, data real, inter
   JSON.stringify(Object.keys(hostilR.revisao).sort()) === '["Bom","Unidade estranha"]' && hostilR.revisao['Unidade estranha'].u === '', hostilR.revisao);
 confere('save sem revisão abre com a fila vazia', JSON.stringify(M.sanitizar({}, tR).revisao) === '{}');
 
+// ── 5g. situação de cada conteúdo no mapa de habilidades ────
+const sit = M.situacaoConteudo;
+confere('sem resposta: ainda não visto', sit(undefined, false) === 'novo' && sit({ feitas: 0, certas: 0 }, false) === 'novo');
+confere('poucas respostas certas não são domínio (7 de 7)', sit({ feitas: 7, certas: 7 }, false) === 'praticando');
+confere('8 de 10 é domínio, o mesmo limite das medalhas', sit({ feitas: 10, certas: 8 }, false) === 'domina');
+confere('1 de 3 pede revisão (abaixo de 60% com 3 ou mais)', sit({ feitas: 3, certas: 1 }, false) === 'revisar');
+confere('1 de 2 ainda é prática: 2 respostas não bastam para concluir', sit({ feitas: 2, certas: 1 }, false) === 'praticando');
+confere('conteúdo na fila de revisão aparece como revisar, mesmo com boa taxa', sit({ feitas: 10, certas: 9 }, true) === 'revisar');
+confere('histórico torto vira ainda não visto', sit({ feitas: 2, certas: 5 }, false) === 'novo' && sit('x', false) === 'novo');
+
 // ── 6. privacidade: nada disto sobe para a nuvem ────────────
 const nuvem = fs.readFileSync(path.join(RAIZ, 'nuvem.js'), 'utf8');
 const pacote = (nuvem.match(/function pacoteDoProgresso\(\)\s*\{[\s\S]*?\n\}/) || [''])[0];

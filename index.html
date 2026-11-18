@@ -838,6 +838,9 @@
         <ul class="rec-lista" id="recLista"></ul>
         <p class="rec-nota">Soma apenas o que você já jogou aqui. É um palpite sobre o caminho, não uma nota da escola.</p>
       </div>
+      <button class="btn-prova-acao btn-medalhas btn-mapa" data-acao="openModal" data-args='["modalMapa"]'>
+        <i class="fa-solid fa-map"></i> Mapa de habilidades
+      </button>
       <button class="btn-prova-acao btn-medalhas" data-acao="openModal" data-args='["modalConquistas"]'>
         <i class="fa-solid fa-medal"></i> Ver medalhas <span class="btn-medalhas-conta">(<span id="recMedalhasConta">0 de 0</span>)</span>
       </button>
@@ -861,6 +864,23 @@
         <label class="aj-opcao"><input type="checkbox" data-pref="calmo">
           <span><strong>Modo calmo</strong> Nos jogos que se mexem (chuva, balões, pescaria, toupeira) tudo anda mais devagar. As contas e as estrelas são as mesmas.</span></label>
       </fieldset>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: MAPA DE HABILIDADES ===== -->
+  <div id="modalMapa" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloMapa" style="display:none">
+    <div class="modal-box records-box mapa-box">
+      <div class="modal-hdr">
+        <h2 id="tituloMapa"><i class="fa-solid fa-map"></i> Mapa de habilidades</h2>
+        <button class="btn-close-modal" aria-label="Fechar mapa de habilidades" data-acao="closeModal" data-args='["modalMapa"]'><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="mapa-resumo" id="mapaResumo"></p>
+      <div class="mapa-proximos" id="mapaProximosCaixa" hidden>
+        <h3>Próximos passos</h3>
+        <ol id="mapaProximos"></ol>
+      </div>
+      <div id="mapaLista"></div>
+      <p class="rec-nota">Domina = 8 respostas ou mais com 80% de acerto. Vale revisar = errou e está na fila de revisão, ou acertou menos de 60% em 3 respostas ou mais. Os códigos são da BNCC (Matemática). É um retrato do que foi jogado aqui, não uma nota da escola.</p>
     </div>
   </div>
 

@@ -309,6 +309,93 @@ document.addEventListener('change', (ev) => {
   if (el && el.closest && el.closest('#modalAjustes') && (el.hasAttribute('data-pref') || el.hasAttribute('data-nivel-jogo'))) mudarAjuste(el);
 });
 
+// ── Mapa de habilidades (BNCC) ────────────────────────
+// Os conteúdos do ano escolhido, com unidade temática, código BNCC e o nível
+// em que aparecem primeiro, tirados do banco e dos geradores — os mesmos que
+// fazem as perguntas. Montado uma vez por ano.
+const _conteudosDoAno = {};
+function conteudosDoAno(ano) {
+  if (_conteudosDoAno[ano]) return _conteudosDoAno[ano];
+  const mapa = {};
+  const anotar = (o, u, bncc, nv) => {
+    if (!o || mapa[o]) return;
+    mapa[o] = { o: o, u: u, cod: (bncc || [])[0] || '', nv: nv };
+  };
+  for (let nv = 1; nv <= 4; nv++) {
+    (window.BANCO_ITENS || []).forEach((i) => { if (i.ano === ano && i.nv === nv) anotar(i.o, i.u, i.bncc, nv); });
+    C.chavesDo(ano, nv).forEach((k) => { const it = C.GER[k] && C.gerarChave(k, ano, nv); if (it) anotar(it.o, it.u, it.bncc, nv); });
+  }
+  _conteudosDoAno[ano] = Object.keys(mapa).map((k) => mapa[k]);
+  return _conteudosDoAno[ano];
+}
+const ROTULO_SITUACAO = {
+  domina: { texto: 'Domina', icone: 'fa-circle-check' },
+  praticando: { texto: 'Praticando', icone: 'fa-seedling' },
+  revisar: { texto: 'Vale revisar', icone: 'fa-rotate-right' },
+  novo: { texto: 'Ainda não visto', icone: 'fa-circle' },
+};
+function montarMapa() {
+  const lista = $('mapaLista');
+  if (!lista) return;
+  lista.textContent = '';
+  const revisao = (G.metas && G.metas.revisao) || {};
+  const itens = conteudosDoAno(G.ano).map((c) => Object.assign({}, c, {
+    h: G.hist[c.o] || null, sit: CM_METAS.situacaoConteudo(G.hist[c.o], !!revisao[c.o]) }));
+  const contagem = { domina: 0, praticando: 0, revisar: 0, novo: 0 };
+  itens.forEach((i) => { contagem[i.sit]++; });
+  $('mapaResumo').textContent = G.ano + 'º ano · ' + itens.length + ' conteúdos: ' + contagem.domina + ' domina, ' +
+    contagem.praticando + ' praticando, ' + contagem.revisar + ' para revisar e ' + contagem.novo + ' ainda não vistos.';
+  // Próximos passos: o que pede revisão, depois o que está pela metade (pior
+  // taxa primeiro), depois o que ainda não apareceu, do nível mais baixo.
+  const taxa = (i) => (i.h ? i.h.certas / i.h.feitas : 0);
+  const proximos = itens.filter((i) => i.sit === 'revisar')
+    .concat(itens.filter((i) => i.sit === 'praticando').sort((a, b) => taxa(a) - taxa(b)))
+    .concat(itens.filter((i) => i.sit === 'novo').sort((a, b) => a.nv - b.nv))
+    .slice(0, 3);
+  const caixa = $('mapaProximos');
+  caixa.textContent = '';
+  proximos.forEach((i) => {
+    const li = document.createElement('li');
+    li.textContent = i.o + ' (' + ROTULO_SITUACAO[i.sit].texto.toLowerCase() + (i.sit === 'novo' ? ', nível ' + C.NIVEIS[i.nv - 1] : '') + ')';
+    caixa.appendChild(li);
+  });
+  $('mapaProximosCaixa').hidden = !proximos.length;
+  CM_METAS.UNIDADES.forEach((u) => {
+    const daUnidade = itens.filter((i) => i.u === u);
+    if (!daUnidade.length) return;
+    const secao = document.createElement('section');
+    secao.className = 'mapa-unidade';
+    const h3 = document.createElement('h3');
+    h3.textContent = C.UNIDADES[u] || u;
+    secao.appendChild(h3);
+    const ul = document.createElement('ul');
+    ul.className = 'mapa-itens';
+    daUnidade.forEach((i) => {
+      const li = document.createElement('li');
+      li.className = 'mapa-item mapa-' + i.sit;
+      const sit = document.createElement('span');
+      sit.className = 'mapa-sit';
+      const ic = document.createElement('i');
+      ic.className = 'fa-solid ' + ROTULO_SITUACAO[i.sit].icone;
+      ic.setAttribute('aria-hidden', 'true');
+      sit.appendChild(ic);
+      sit.appendChild(document.createTextNode(' ' + ROTULO_SITUACAO[i.sit].texto));
+      const nome = document.createElement('span');
+      nome.className = 'mapa-nome';
+      nome.textContent = i.o;
+      const det = document.createElement('span');
+      det.className = 'mapa-det';
+      det.textContent = (i.cod ? i.cod + ' · ' : '') + (i.h ? i.h.certas + ' de ' + i.h.feitas + ' acertos' : 'nível ' + C.NIVEIS[i.nv - 1]);
+      li.appendChild(nome);
+      li.appendChild(sit);
+      li.appendChild(det);
+      ul.appendChild(li);
+    });
+    secao.appendChild(ul);
+    lista.appendChild(secao);
+  });
+}
+
 // O que as medalhas leem do estado: o histórico por conteúdo (com a unidade de
 // cada nome, tirada da mesma tabela do boletim) e as provas feitas.
 function dadosDasConquistas() {
@@ -2891,6 +2978,7 @@ function abrirModalDeVerdade(id) {
   }
   if (id === 'modalConquistas') pintarConquistas();
   if (id === 'modalAjustes') pintarAjustes();
+  if (id === 'modalMapa') montarMapa();
   // O boletim inteiro vive em avaliacao.js: aqui só avisamos que ele abriu,
   // para que os números sejam relidos na hora (e não os da última vez).
   if (id === 'modalPais' && window.CM_AVALIACAO) window.CM_AVALIACAO.boletim();

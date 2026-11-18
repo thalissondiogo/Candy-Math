@@ -1331,6 +1331,21 @@ body::after {
    abertura; os confetes são cortados no script. Movimento dos jogos fica em
    metade da velocidade, também no script. */
 body.pref-calmo .lu-onca, body.pref-calmo .splash-onca-icon { animation:none; }
+.mapa-resumo { margin:0 0 10px; font-weight:700; color:var(--text); line-height:1.4; font-size:clamp(13px, 1.3vw, 15px); }
+.mapa-proximos { border:2px solid var(--yellow); background:#FFFDE7; border-radius:var(--r-sm); padding:8px 12px; margin:0 0 12px; }
+.mapa-proximos h3, .mapa-unidade h3 { font-family:'Fredoka One',cursive; color:var(--purple); font-size:clamp(14px, 1.5vw, 17px); margin:0 0 6px; }
+.mapa-proximos ol { margin:0; padding-left:20px; line-height:1.45; font-size:clamp(13px, 1.3vw, 15px); }
+.mapa-unidade { margin:0 0 12px; }
+.mapa-itens { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; }
+.mapa-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; align-items:center;
+  padding:6px 8px; border-radius:var(--r-sm); background:#FAF7FC; border-left:5px solid rgba(122,107,138,0.4); }
+.mapa-nome { font-weight:700; color:var(--text); font-size:clamp(13px, 1.3vw, 15px); line-height:1.3; min-width:0; overflow-wrap:anywhere; }
+.mapa-sit { font-size:var(--fs-apoio); font-weight:800; white-space:nowrap; color:var(--text2); }
+.mapa-det { grid-column:1 / -1; font-size:var(--fs-apoio); color:var(--text2); }
+.mapa-domina { border-left-color:var(--green); } .mapa-domina .mapa-sit { color:#2E7D3A; }
+.mapa-praticando { border-left-color:var(--purple); } .mapa-praticando .mapa-sit { color:var(--purple); }
+.mapa-revisar { border-left-color:var(--orange); } .mapa-revisar .mapa-sit { color:#B4530A; }
+.btn-mapa { background:linear-gradient(135deg,#23877B,#1B6B62); }   /* branco sobre esse verde-água: contraste de 4,3:1 ou mais */
 .ajustes-box { border-top:5px solid var(--purple); border-radius:var(--r); }
 .aj-nota { margin:0 0 12px; font-size:var(--fs-apoio); color:var(--text2); line-height:1.4; }
 .aj-grupo { border:2px solid rgba(155,93,229,0.25); border-radius:var(--r-sm); padding:10px 12px 12px; margin:0 0 12px; }
