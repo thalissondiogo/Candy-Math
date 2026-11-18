@@ -1182,7 +1182,27 @@ document.addEventListener('DOMContentLoaded', () => {
   armarProvaDePeca();
   pintarMascotes();
   setupParticleCanvas();
+  pintarConexao();
+  registrarServiceWorker();
 });
+
+// ── Funcionamento offline (PWA) ───────────────────────
+// O service worker (sw.js) guarda os arquivos do jogo para abrir sem internet.
+// Só em http(s) de verdade: aberto pelo disco (file://) o jogo segue como
+// sempre, sem service worker.
+function registrarServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  const seguro = location.protocol === 'https:' || location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  if (!seguro) return;
+  navigator.serviceWorker.register('sw.js').catch(() => { /* sem offline, o jogo funciona igual */ });
+}
+// Sem internet, um aviso diz o que continua e o que espera a conexão voltar.
+function pintarConexao() {
+  const aviso = $('avisoOffline');
+  if (aviso) aviso.hidden = navigator.onLine !== false;
+}
+window.addEventListener('online', pintarConexao);
+window.addEventListener('offline', pintarConexao);
 
 function entrarNoHub() {
   showScreen('screenHub');

@@ -708,3 +708,41 @@ não rende meta nenhuma a mais. Medalhas: 305 estrelas na vida do perfil.
 Saves adulterados (metas texto, lista, nulo; medalhas forjadas; missões pagas
 de outro dia; dias futuros; recorde absurdo; marco sem dias; histórico torto)
 abrem sem erro, sem pagamento indevido e no lenço azul.
+
+## F — Fases 2 a 5: decisões e limites registrados
+
+Implementadas em 18/11/2026, depois da Fase 1. Cada item tem teste próprio
+(Node ou navegador real); os números estão nas mensagens de commit.
+
+### F1 — Decisões tomadas sem consulta (autorização para executar as fases)
+
+- **Achado E2 (duelo local):** opção (a) — no mesmo aparelho só o Jogador 1,
+  dono do perfil, alimenta histórico, missões e medalhas.
+- **Novo jogo:** jogo da velha matemático (Velha Doce), por juntar cálculo e
+  decisão estratégica; corrida em tabuleiro repetiria o formato dos 13 jogos.
+- **Desafio assíncrono:** por código com semente, sem servidor (a sala usa o
+  Supabase, desligado). O código só carrega ano, nível e semente. Sem servidor
+  não há como conferir o placar do outro: é amistoso, e a tela diz.
+- **Mascotes:** onça, capivara e lobo-guará — mesma silhueta, outra pelagem,
+  para as 79 peças servirem em todos.
+- **Fonte para dislexia:** fontes do aparelho com mais espaçamento; nenhuma
+  fonte nova baixada (OpenDyslexic exigiria dependência externa).
+
+### F2 — PWA: o service worker não intercepta outras origens
+
+Dentro do service worker todo `fetch` obedece ao `connect-src` da CSP, que
+não inclui os CDNs de fontes e ícones. A primeira versão interceptava esses
+pedidos e as fontes deixavam de carregar online (o auditor de layout pegou
+pelo texto cortado). Agora só arquivos da própria origem passam pelo cache,
+rede primeiro. Sem internet, o jogo abre e funciona, mas as fontes caem nas
+do sistema e os ícones da Font Awesome não desenham. Recomendação: hospedar
+fontes e ícones no próprio site (também resolveria D1).
+
+### F3 — Limites conhecidos
+
+- Missões, medalhas e nível valem em qualquer ano escolhido pela criança.
+- Revisão espaçada só entra no quiz quando o ano e nível atuais sabem
+  perguntar aquele conteúdo.
+- Limite de tempo conta uso ativo neste aparelho; outro aparelho conta à parte.
+- A sequência de questões de um desafio depende da versão do banco: depois
+  de uma atualização de conteúdo, o mesmo código pode sortear outras perguntas.

@@ -14,6 +14,7 @@
     "desafio": "node testes/testar-desafio.js",
     "contas": "node testes/testar-contas.js",
     "jogo": "node testes/testar-jogo.js",
+    "pwa": "node testes/testar-pwa.js",
     "servidor": "node testes/servidor-estatico.js",
     "layout": "node testes/auditar-layout.js",
     "bncc": "node testes/relatorio-bncc.js"

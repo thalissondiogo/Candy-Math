@@ -8,6 +8,9 @@
        o navegador pede /favicon.ico e leva um 404 em toda abertura de página. -->
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#9B5DE5">
   <!-- Os três domínios de fora aparecem no `<head>` e o navegador só descobre
        o que eles realmente servem depois de baixar o CSS deles: as fontes
        moram em `fonts.gstatic.com`, não em `fonts.googleapis.com`, e os
@@ -1197,6 +1200,8 @@
 
   <!-- A ordem importa: conteúdo primeiro, depois o que consome conteúdo,
        por último o script.js, que liga tudo na tela. -->
+  <p class="aviso-offline" id="avisoOffline" role="status" hidden>
+    <i class="fa-solid fa-wifi" aria-hidden="true"></i> Sem internet: os jogos funcionam normalmente. A voz por IA, a conexão com a conta e a sala por código voltam quando a internet voltar.</p>
   <script src="conteudo.js"></script>
   <script src="banco-itens.js"></script>
   <script src="guarda-roupa.js"></script>
