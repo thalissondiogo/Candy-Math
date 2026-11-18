@@ -154,6 +154,41 @@ function reforcoDe(q) {
   return item;
 }
 
+// Uma questão nova de um conteúdo pelo nome, no ano e nível de agora: um
+// gerador que trabalhe esse conteúdo ou um item do banco com o mesmo nome.
+// Sem equivalente neste ano e nível, devolve null — não inventamos questão.
+function questaoDoConteudo(o) {
+  const chaves = C.chavesDo(G.ano, G.nivel);
+  let item = null;
+  const ger = chaves.find((k) => C.GER[k] && C.gerarChave(k, G.ano, G.nivel).o === o);
+  if (ger) item = C.gerarChave(ger, G.ano, G.nivel);
+  else {
+    const banco = (window.BANCO_ITENS || []).filter((i) => i.ano === G.ano && i.nv === G.nivel && i.o === o &&
+      monte.usadas.concat(recentes).indexOf(i.id) < 0);
+    if (banco.length) item = Object.assign({}, C.d1(banco));
+  }
+  if (!item || !item.alt || item.alt.length < 2) return null;
+  item = Object.assign({}, item);
+  item.ref = item.ref || item.id;
+  item.unidade = C.UNIDADES[item.u] || item.u;
+  monte.usadas.push(item.ref);
+  marcarRecente(item.ref);
+  return item;
+}
+
+// Até duas revisões vencidas abrem a rodada do quiz, marcadas como revisão.
+// Só entram as que este ano e nível sabem perguntar.
+const REVISOES_POR_RODADA = 2;
+function revisoesDaRodada() {
+  const fila = [];
+  CM_METAS.revisoesDevidas(G.metas, Date.now()).some((r) => {
+    const q = questaoDoConteudo(r.nome);
+    if (q) { q.revisao = true; fila.push(q); }
+    return fila.length >= REVISOES_POR_RODADA;
+  });
+  return fila;
+}
+
 function proximaAfirmacao() {
   if (monte.ano !== G.ano || monte.nv !== G.nivel) resetarMonte();
   const a = C.afirmacao(G.ano, G.nivel, monte.usadas.concat(recentes));
@@ -190,6 +225,8 @@ function registrarResultado(acertou) {
   h.feitas++;
   if (acertou) { h.certas++; }
   CM_METAS.registrarResposta(G.metas, { u: itemAtual.u, acertou: acertou }, Date.now());
+  // Revisão espaçada: erro agenda o conteúdo; acerto na hora afasta a próxima.
+  CM_METAS.registrarRevisao(G.metas, nome, itemAtual.u, acertou, Date.now());
   premiarMetas();
 }
 
@@ -1201,11 +1238,16 @@ function iniciarQuiz() {
   quizDots = [];
   filaQuiz = [];
   iniciarRodada();
+  filaQuiz = revisoesDaRodada();
   carregarQuiz();
 }
 
 function carregarQuiz() {
-  const q = filaQuiz.length ? filaQuiz.shift() : proximaPergunta();
+  const daFila = filaQuiz.length > 0;
+  const q = daFila ? filaQuiz.shift() : proximaPergunta();
+  // Questão que veio da fila (revisão, reforço) é registrada ao aparecer: com
+  // duas na fila, registrar na criação apontaria a resposta para a errada.
+  if (daFila) registrarTrabalho(q);
   G.currentQ = q;
   quizTentativas = 0;
 
@@ -1215,7 +1257,7 @@ function carregarQuiz() {
   $('quizEmoji').innerHTML      = `<i class="fa-solid ${iconeDaUnidade(q)}"></i>`;
   $('quizText').textContent     = q.txt;
   const tag = $('quizTag');
-  if (tag) tag.textContent = selo(q);
+  if (tag) tag.textContent = (q.revisao ? 'Revisão · ' : '') + selo(q);
   $('quizFeedback').classList.remove('show');
   $('quizContinuar').hidden = true;
   $('quizOuvir').hidden = true;

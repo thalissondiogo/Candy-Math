@@ -29,6 +29,7 @@
        dias:   ['AAAA-MM-DD', ...]    dias com atividade, em ordem, sem repetir
        recordeDias: n                 maior sequência já feita (sobrevive ao teto da lista)
        marcos: [3, 7, ...]            marcos de dias seguidos já premiados (uma vez cada)
+       revisao:    { 'nome do conteúdo': { u, proxima: 'AAAA-MM-DD', intervalo: 1|2|4|8, acertos: 0..2 } }
        conquistas: { ganhas: {id: quando}, reforcos: n, degrau: 1..4, insignia: 1..4 }
                                       (insignia = último estágio da bandana já anunciado)
        dia:    PERIODO do dia de hoje
@@ -187,10 +188,66 @@ function periodoVazio(chave) {
   return { chave: chave, respostas: 0, acertos: 0, rodadas: 0, boas: 0, perfeitas: 0, pagas: [], porUnidade: porUnidade };
 }
 
+// ── revisão espaçada ─────────────────────────────────────
+// Errou um conteúdo → ele volta amanhã. Acertou quando já era a hora → o
+// intervalo dobra (1, 2, 4, 8 dias). Três acertos espaçados → sai da fila.
+// Errou de novo → volta para 1 dia. Acertar antes da hora não mexe em nada:
+// repetir no mesmo dia não é revisão. Teto de 40 conteúdos na fila.
+const INTERVALOS = [1, 2, 4, 8];
+const ACERTOS_PARA_SAIR = 3;
+const MAX_REVISAO = 40;
+function diaMais(chave, dias) {
+  const [a, m, d] = chave.split('-').map(Number);
+  return chaveDe(new Date(a, m - 1, d + dias, 12));
+}
+function revisaoSanit(r, hoje) {
+  const out = {};
+  if (!r || typeof r !== 'object' || Array.isArray(r)) return out;
+  Object.keys(r).filter((nome) => typeof nome === 'string' && nome.length > 0 && nome.length <= 120 && !/[<>]/.test(nome))
+    .map((nome) => [nome, r[nome]])
+    .filter(([, v]) => v && typeof v === 'object' && diaValido(v.proxima) && INTERVALOS.indexOf(v.intervalo) >= 0
+      && Number.isInteger(v.acertos) && v.acertos >= 0 && v.acertos < ACERTOS_PARA_SAIR && diasEntre(hoje, v.proxima) <= 8)
+    .sort((x, y) => (x[1].proxima < y[1].proxima ? -1 : 1))
+    .slice(0, MAX_REVISAO)
+    .forEach(([nome, v]) => { out[nome] = { u: UNIDADES.indexOf(v.u) >= 0 ? v.u : '', proxima: v.proxima, intervalo: v.intervalo, acertos: v.acertos }; });
+  return out;
+}
+function registrarRevisao(estado, nome, unidade, acertou, agora) {
+  if (!estado || typeof nome !== 'string' || !nome) return estado;
+  virar(estado, agora);
+  const hoje = diaLocal(agora);
+  const r = estado.revisao;
+  const atual = r[nome];
+  if (!acertou) {
+    r[nome] = { u: UNIDADES.indexOf(unidade) >= 0 ? unidade : '', proxima: diaMais(hoje, 1), intervalo: 1, acertos: 0 };
+    const nomes = Object.keys(r);
+    if (nomes.length > MAX_REVISAO) {
+      // Fila cheia: sai o que está mais longe de vencer, nunca o que acabou de entrar.
+      const longe = nomes.filter((n) => n !== nome).sort((x, y) => (r[x].proxima > r[y].proxima ? -1 : 1))[0];
+      delete r[longe];
+    }
+    return estado;
+  }
+  if (!atual || atual.proxima > hoje) return estado;
+  const acertos = atual.acertos + 1;
+  if (acertos >= ACERTOS_PARA_SAIR) { delete r[nome]; return estado; }
+  const intervalo = INTERVALOS[Math.min(INTERVALOS.indexOf(atual.intervalo) + 1, INTERVALOS.length - 1)];
+  r[nome] = { u: atual.u, proxima: diaMais(hoje, intervalo), intervalo: intervalo, acertos: acertos };
+  return estado;
+}
+// Conteúdos com revisão vencida, do que venceu há mais tempo para o mais novo.
+function revisoesDevidas(estado, agora) {
+  if (!estado || !estado.revisao) return [];
+  const hoje = diaLocal(agora);
+  return Object.keys(estado.revisao).filter((n) => estado.revisao[n].proxima <= hoje)
+    .sort((x, y) => (estado.revisao[x].proxima < estado.revisao[y].proxima ? -1 : 1))
+    .map((n) => ({ nome: n, u: estado.revisao[n].u, intervalo: estado.revisao[n].intervalo }));
+}
+
 function conquistasVazias() { return { ganhas: {}, reforcos: 0, degrau: 1, insignia: 1 }; }
 
 function vazio(agora) {
-  return { dias: [], recordeDias: 0, marcos: [], conquistas: conquistasVazias(),
+  return { dias: [], recordeDias: 0, marcos: [], revisao: {}, conquistas: conquistasVazias(),
     dia: periodoVazio(diaLocal(agora)), semana: periodoVazio(semanaLocal(agora)) };
 }
 
@@ -263,6 +320,7 @@ function sanitizar(bruto, agora) {
     marcos: Array.isArray(d.marcos)
       ? d.marcos.filter((n) => VALORES_MARCOS.indexOf(n) >= 0 && !vistos[n] && (vistos[n] = true)).sort((a, b) => a - b)
       : [],
+    revisao: revisaoSanit(d.revisao, hoje),
     conquistas: conquistasSanit(d.conquistas, agora),
     dia: periodoSanit(d.dia, hoje, 'dia'),
     semana: periodoSanit(d.semana, semanaLocal(agora), 'semana'),
@@ -279,6 +337,7 @@ function virar(estado, agora) {
   if (!Number.isInteger(estado.recordeDias)) estado.recordeDias = 0;
   if (!Array.isArray(estado.marcos)) estado.marcos = [];
   if (!estado.conquistas || typeof estado.conquistas !== 'object') estado.conquistas = conquistasVazias();
+  if (!estado.revisao || typeof estado.revisao !== 'object' || Array.isArray(estado.revisao)) estado.revisao = {};
   [estado.dia, estado.semana].forEach((p) => {
     if (!Array.isArray(p.pagas)) p.pagas = [];
     if (!Number.isInteger(p.boas)) p.boas = 0;
@@ -593,6 +652,9 @@ const CM_METAS = {
   INSIGNIAS: JSON.parse(JSON.stringify(INSIGNIAS)),
   insignia: insignia,
   colherInsignia: colherInsignia,
+  INTERVALOS: INTERVALOS.slice(),
+  registrarRevisao: registrarRevisao,
+  revisoesDevidas: revisoesDevidas,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = CM_METAS;

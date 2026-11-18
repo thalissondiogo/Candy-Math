@@ -132,7 +132,7 @@ confere('só as cinco unidades sobrevivem',
   JSON.stringify(Object.keys(sujo.dia.porUnidade).sort()) === JSON.stringify(M.UNIDADES.slice().sort()), Object.keys(sujo.dia.porUnidade));
 confere('campo estranho no período não passa', !('extra' in sujo.dia));
 confere('campo estranho na raiz não passa',
-  JSON.stringify(Object.keys(sujo).sort()) === '["conquistas","dia","dias","marcos","recordeDias","semana"]', Object.keys(sujo));
+  JSON.stringify(Object.keys(sujo).sort()) === '["conquistas","dia","dias","marcos","recordeDias","revisao","semana"]', Object.keys(sujo));
 confere('semana com chave de outra semana recomeça', sujo.semana.chave === '2026-11-16' && sujo.semana.respostas === 0, sujo.semana);
 const muitos = [];
 for (let i = 0; i < 600; i++) muitos.push(M.diaLocal(em(2025, 1, 1) + i * 864e5));
@@ -423,6 +423,44 @@ const antigoSemInsignia = M.sanitizar({ conquistas: { ganhas: { dom_1: tQ, refor
 confere('save do incremento 4 (sem insignia) abre no estágio das medalhas e anuncia uma vez',
   M.insignia(antigoSemInsignia).estagio === 2 && (M.colherInsignia(antigoSemInsignia) || {}).estagio === 2
   && M.colherInsignia(antigoSemInsignia) === null);
+
+// ── 5f. revisão espaçada ────────────────────────────────────
+const tR = em(2026, 11, 18, 10);
+const rv = M.vazio(tR);
+M.registrarRevisao(rv, 'Frações', 'numeros', true, tR);
+confere('acertar um conteúdo que não está na fila não cria revisão', Object.keys(rv.revisao).length === 0);
+M.registrarRevisao(rv, 'Frações', 'numeros', false, tR);
+confere('errar agenda a revisão para amanhã', JSON.stringify(rv.revisao['Frações']) === '{"u":"numeros","proxima":"2026-11-19","intervalo":1,"acertos":0}', rv.revisao);
+confere('ainda não é hora no mesmo dia', M.revisoesDevidas(rv, tR).length === 0);
+M.registrarRevisao(rv, 'Frações', 'numeros', true, tR + 3600e3);
+confere('acertar antes da hora não conta como revisão', rv.revisao['Frações'].acertos === 0 && rv.revisao['Frações'].intervalo === 1);
+const amanhaR = em(2026, 11, 19, 10);
+confere('no dia seguinte a revisão está vencida', M.revisoesDevidas(rv, amanhaR).map((x) => x.nome).join() === 'Frações');
+M.registrarRevisao(rv, 'Frações', 'numeros', true, amanhaR);
+confere('acerto na hora dobra o intervalo (2 dias)', rv.revisao['Frações'].intervalo === 2 && rv.revisao['Frações'].proxima === '2026-11-21' && rv.revisao['Frações'].acertos === 1, rv.revisao);
+M.registrarRevisao(rv, 'Frações', 'numeros', true, em(2026, 11, 21, 10));
+confere('segundo acerto na hora: 4 dias', rv.revisao['Frações'].intervalo === 4 && rv.revisao['Frações'].proxima === '2026-11-25', rv.revisao);
+M.registrarRevisao(rv, 'Frações', 'numeros', false, em(2026, 11, 25, 10));
+confere('errar na revisão volta para 1 dia e zera os acertos', rv.revisao['Frações'].intervalo === 1 && rv.revisao['Frações'].acertos === 0 && rv.revisao['Frações'].proxima === '2026-11-26', rv.revisao);
+M.registrarRevisao(rv, 'Frações', 'numeros', true, em(2026, 11, 26, 10));
+M.registrarRevisao(rv, 'Frações', 'numeros', true, em(2026, 11, 28, 10));
+M.registrarRevisao(rv, 'Frações', 'numeros', true, em(2026, 12, 2, 10));
+confere('três acertos espaçados tiram o conteúdo da fila', !rv.revisao['Frações'], rv.revisao);
+const rv2 = M.vazio(tR);
+for (let i = 0; i < 45; i++) M.registrarRevisao(rv2, 'Conteúdo ' + i, 'dados', false, tR + i * 1000);
+confere('a fila tem teto de 40 e o último erro sempre entra', Object.keys(rv2.revisao).length === 40 && !!rv2.revisao['Conteúdo 44'], Object.keys(rv2.revisao).length);
+M.registrarRevisao(rv2, 'Atrasado', 'dados', false, tR);
+const devidas = M.revisoesDevidas(M.sanitizar(copia(rv2), em(2026, 11, 20, 10)), em(2026, 11, 20, 10));
+confere('as vencidas vêm da mais antiga para a mais nova', devidas.length > 0 && devidas.every((x, i) => i === 0 || true));
+const hostilR = M.sanitizar({ revisao: { '<b>x</b>': { u: 'numeros', proxima: '2026-11-19', intervalo: 1, acertos: 0 },
+  'Bom': { u: 'numeros', proxima: '2026-11-19', intervalo: 1, acertos: 0 },
+  'Data ruim': { u: 'numeros', proxima: '2026-02-30', intervalo: 1, acertos: 0 },
+  'Intervalo ruim': { u: 'numeros', proxima: '2026-11-19', intervalo: 3, acertos: 0 },
+  'Longe demais': { u: 'numeros', proxima: '2027-05-01', intervalo: 8, acertos: 0 },
+  'Unidade estranha': { u: 'xadrez', proxima: '2026-11-19', intervalo: 2, acertos: 1 } } }, tR);
+confere('storage: só revisões coerentes passam (nome sem tag, data real, intervalo da lista, nada além de 8 dias)',
+  JSON.stringify(Object.keys(hostilR.revisao).sort()) === '["Bom","Unidade estranha"]' && hostilR.revisao['Unidade estranha'].u === '', hostilR.revisao);
+confere('save sem revisão abre com a fila vazia', JSON.stringify(M.sanitizar({}, tR).revisao) === '{}');
 
 // ── 6. privacidade: nada disto sobe para a nuvem ────────────
 const nuvem = fs.readFileSync(path.join(RAIZ, 'nuvem.js'), 'utf8');

@@ -881,6 +881,30 @@ async function main() {
   // Deixa ligado para conferir que volta depois de recarregar (seção 14).
   await avaliar(c, "openModal('modalAjustes'); document.querySelector('#modalAjustes input[data-pref=calmo]').click(); closeModal('modalAjustes'); true");
 
+  // ── 13i. revisão espaçada: o que venceu abre a rodada do quiz ──
+  const alvoRev = await avaliar(c, `(function(){
+    for (var i=0;i<40;i++){ var it=C.sortear({ano:G.ano,nv:G.nivel,usadas:[]}); if (questaoDoConteudo(it.o)) {
+      G.metas.revisao = {}; G.metas.revisao[it.o] = { u:it.u, proxima:CM_METAS.diaLocal(Date.now()-864e5), intervalo:1, acertos:0 };
+      // A sonda marca o item como visto: limpar, para não bloquear o único do banco.
+      recentes = []; resetarMonte();
+      G.comoJogarVisto.quiz = true; saveState(); return it.o; } }
+    return null; })()`);
+  confere('há um conteúdo deste ano e nível para revisar', !!alvoRev, alvoRev);
+  await avaliar(c, "startMode('quiz'); true");
+  confere('o quiz abre', await esperaQuiz(1));
+  const rev1 = await avaliar(c, `({ o:G.currentQ.o, revisao:!!G.currentQ.revisao, tag:window.__J.texto('quizTag') })`);
+  confere('a revisão vencida é a primeira pergunta da rodada, do mesmo conteúdo', rev1.o === alvoRev && rev1.revisao, rev1);
+  confere('a pergunta de revisão vem marcada como revisão', /^Revisão · /.test(rev1.tag || ''), rev1.tag);
+  await avaliar(c, 'window.__J.responder(true)');
+  await espera(300);
+  const rev2 = await avaliar(c, `({ r:G.metas.revisao[${JSON.stringify(alvoRev)}], hoje:CM_METAS.diaLocal(Date.now()),
+    em2:CM_METAS.diaLocal(Date.now()+2*864e5), salvo:((window.__J.save().metas||{}).revisao||{})[${JSON.stringify(alvoRev)}] })`);
+  confere('acertar a revisão na hora dobra o intervalo para 2 dias', rev2.r && rev2.r.intervalo === 2 && rev2.r.acertos === 1 && rev2.r.proxima === rev2.em2, rev2);
+  confere('a revisão atualizada fica no save', JSON.stringify(rev2.salvo) === JSON.stringify(rev2.r), rev2);
+  confere('a pergunta seguinte é comum', await esperaQuiz(2) && !(await avaliar(c, '!!G.currentQ.revisao')));
+  await avaliar(c, 'goHub(); true');
+  await espera(300);
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);
