@@ -817,17 +817,19 @@
   <div id="modalShop" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloShop" style="display:none">
     <div class="modal-box shop-box">
       <div class="modal-hdr">
-        <h2 id="tituloShop"><i class="fa-solid fa-shirt"></i> Guarda-Roupa da Pi</h2>
+        <h2 id="tituloShop"><i class="fa-solid fa-shirt"></i> Guarda-Roupa</h2>
         <div class="modal-coins"><span class="sr-only">Estrelas:</span><i class="fa-solid fa-star"></i> <span id="shopCoins">0</span></div>
         <button class="btn-close-modal" aria-label="Fechar loja" data-acao="closeModal" data-args='["modalShop"]'><i class="fa-solid fa-xmark"></i></button>
       </div>
 
+      <p class="wd-lado-titulo" id="rotuloEspecie">Qual bicho é o seu mascote?</p>
+      <div class="wd-especies" id="wdEspecies" role="radiogroup" aria-labelledby="rotuloEspecie"></div>
       <div class="wardrobe-preview">
         <div class="wd-palco">
           <div class="wd-mascote" id="wdMascote"></div>
         </div>
         <div class="wd-lado">
-          <p class="wd-lado-titulo">O que ela está vestindo</p>
+          <p class="wd-lado-titulo">O que está vestindo</p>
           <p class="wd-prova" id="wdProva" hidden></p>
           <ul class="wd-slots" id="wdSlots"></ul>
           <button class="wd-tirar-tudo" data-acao="limparEquip">

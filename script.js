@@ -87,6 +87,8 @@ function familiaSanit(f) {
   return out;
 }
 G.familia = familiaVazia();
+// Bicho escolhido no Guarda-Roupa (mascote.js): onça, capivara ou lobo-guará.
+G.mascote = 'onca';
 // Modo calmo: o movimento desacelera; a matemática, a pontuação e a validação
 // das respostas são as mesmas. O duelo tem relógio próprio e não muda.
 function calmo() { return !!(G.prefs && G.prefs.calmo); }
@@ -277,7 +279,7 @@ function premiarMetas() {
   // medalhas já pagaram) e sem efeito na tela além do próprio desenho.
   const insignia = CM_METAS.colherInsignia(G.metas);
   if (insignia) {
-    recados.push('A bandana da Juba mudou: ' + insignia.nome + '.');
+    recados.push('A bandana ' + mascoteAtual().de + ' mudou: ' + insignia.nome + '.');
     pintarMascotes();
   }
   if (recados.length) showToast(recados.join(' '));
@@ -304,7 +306,7 @@ function quebrarTexto(ctx, texto, largura) {
   return linhas;
 }
 function imagemDoMascote() {
-  const svg = MASCOTE.svg(G.equip, { corte: 'inteiro', estagio: insigniaAtual().estagio, titulo: 'Juba Candy' });
+  const svg = MASCOTE.svg(G.equip, { corte: 'inteiro', estagio: insigniaAtual().estagio, especie: G.mascote, titulo: mascoteAtual().nome });
   return new Promise((ok, falha) => {
     const img = new Image();
     img.onload = () => ok(img);
@@ -667,9 +669,10 @@ function pintarConquistas() {
   const ganhas = lista.filter((c) => c.ganha).length;
   $('conqResumo').textContent = ganhas + ' de ' + lista.length + ' medalhas';
   const ins = insigniaAtual();
-  $('conqInsignia').textContent = 'Bandana da Juba: ' + ins.nome + '. ' + (ins.proximo
+  const bicho = mascoteAtual();
+  $('conqInsignia').textContent = 'Bandana ' + bicho.de + ': ' + ins.nome + '. ' + (ins.proximo
     ? 'A próxima (' + ins.proximo.nome.toLowerCase() + ') vem com ' + ins.proximo.medalhas + ' medalhas.'
-    : 'É a última: a Juba já usa a medalha da confeitaria.');
+    : 'É a última: ' + bicho.curto + ' já usa a medalha da confeitaria.');
   return { ganhas: ganhas, total: lista.length };
 }
 
@@ -1213,6 +1216,7 @@ function trocarEstudante(perfil) {
     metas: CM_METAS.vazio(),
     prefs: prefsVazias(),
     familia: familiaVazia(),
+    mascote: 'onca',
   });
   recentes = [];
   resetarMonte();
@@ -1351,10 +1355,55 @@ function insigniaAtual() { return CM_METAS.insignia(G.metas); }
 function pintarUmMascote(el, equip, corte, titulo, estagio) {
   if (!el || !MASCOTE) return;
   const est = estagio || 1;
-  const chave = corte + '#' + MASCOTE.assinatura(equip) + '#' + est + '#' + (titulo || '');
+  const chave = corte + '#' + MASCOTE.assinatura(equip) + '#' + est + '#' + G.mascote + '#' + (titulo || '');
   if (el.dataset.figurino === chave) return;
   el.dataset.figurino = chave;
-  el.innerHTML = MASCOTE.svg(equip, { corte: corte, titulo: titulo, estagio: est });
+  el.innerHTML = MASCOTE.svg(equip, { corte: corte, titulo: titulo, estagio: est, especie: G.mascote });
+}
+function mascoteAtual() { return MASCOTE.especie(G.mascote); }
+// Escolha do bicho no Guarda-Roupa. Roupas, insígnia e progresso seguem iguais.
+function escolherMascote(id) {
+  const novo = MASCOTE.especieValida(id);
+  if (novo !== id) return;
+  G.mascote = novo;
+  saveState();
+  pintarEspecies();
+  pintarMascotes();
+  updateWardrobePreview();
+  falarAviso('Agora o seu mascote é ' + mascoteAtual().nome + ', ' + mascoteAtual().animal + '.');
+}
+function pintarEspecies() {
+  const caixa = $('wdEspecies');
+  if (!caixa) return;
+  if (!caixa.childElementCount) {
+    MASCOTE.especies.forEach((e) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'wd-especie';
+      b.setAttribute('role', 'radio');
+      b.setAttribute('data-acao', 'escolherMascote');
+      b.setAttribute('data-args', JSON.stringify([e.id]));
+      b.setAttribute('data-especie', e.id);
+      const rosto = document.createElement('span');
+      rosto.className = 'wd-especie-rosto';
+      rosto.innerHTML = MASCOTE.svg({}, { corte: 'rosto', especie: e.id, titulo: '' });
+      const svg = rosto.querySelector('svg');
+      if (svg) { svg.setAttribute('aria-hidden', 'true'); svg.removeAttribute('aria-label'); }
+      const nome = document.createElement('span');
+      nome.className = 'wd-especie-nome';
+      nome.textContent = e.curto;
+      const bicho = document.createElement('span');
+      bicho.className = 'wd-especie-bicho';
+      bicho.textContent = e.animal;
+      b.appendChild(rosto); b.appendChild(nome); b.appendChild(bicho);
+      caixa.appendChild(b);
+    });
+  }
+  caixa.querySelectorAll('[data-especie]').forEach((b) => {
+    const ativo = b.getAttribute('data-especie') === G.mascote;
+    b.classList.toggle('ativa', ativo);
+    b.setAttribute('aria-checked', String(ativo));
+  });
 }
 
 // Quem não vê o boneco precisa ouvir o que ele está vestindo: sem isto, o
@@ -1365,12 +1414,13 @@ function descreverFigurino(equip) {
     .filter(Boolean)
     .map((i) => i.name);
   const insignia = insigniaAtual().descricao;
+  const nome = mascoteAtual().nome;
   if (!insignia) {
     return pecas.length
-      ? 'Juba Candy vestindo ' + pecas.join(', ')
-      : 'Juba Candy, só de pelo e bandana azul';
+      ? nome + ' vestindo ' + pecas.join(', ')
+      : nome + ', só de pelo e bandana azul';
   }
-  return 'Juba Candy ' + insignia + (pecas.length ? ', vestindo ' + pecas.join(', ') : '');
+  return nome + ' ' + insignia + (pecas.length ? ', vestindo ' + pecas.join(', ') : '');
 }
 
 function pintarMascotes() {
@@ -3260,6 +3310,7 @@ function openShop() {
   document.querySelectorAll('#shopTabs .stab').forEach(t => t.classList.remove('active'));
   const primeira = $('shopTabs').querySelector('.stab');
   if (primeira) primeira.classList.add('active');
+  pintarEspecies();
   updateWardrobePreview();
   openModal('modalShop');
 }
@@ -3624,6 +3675,7 @@ function apagarLocal(semAviso) {
   G.metas = CM_METAS.vazio();
   G.prefs = prefsVazias();
   G.familia = familiaVazia();
+  G.mascote = 'onca';
   aplicarPreferencias();
   resetarMonte();
   const guardado = gravarLocal();
@@ -3921,6 +3973,7 @@ function gravarLocal() {
       metas:        G.metas,
       prefs:        G.prefs,
       familia:      G.familia,
+      mascote:      G.mascote,
     }));
     return true;
   } catch (e) {
@@ -4063,6 +4116,7 @@ function loadState() {
   G.metas           = CM_METAS.sanitizar(d.metas, Date.now());
   G.prefs           = prefsSanit(d.prefs);
   G.familia         = familiaSanit(d.familia);
+  G.mascote         = MASCOTE.especieValida(d.mascote);
   const sIcon = $('soundIcon');
   if (sIcon) sIcon.className = G.soundOn ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
 }
@@ -4095,6 +4149,7 @@ const ACOES_DOS_BOTOES = {
   goHub:         function ()          { goHub(); },
   imprimir:      function ()          { window.print(); },
   limparEquip:   function ()          { limparEquip(); },
+  escolherMascote: function (id)      { escolherMascote(id); },
   nextPuzzle:    function ()          { nextPuzzle(); },
   openModal:     function (id)        { openModal(id); },
   openShop:      function ()          { openShop(); },

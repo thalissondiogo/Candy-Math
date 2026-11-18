@@ -182,6 +182,36 @@ GR.abas.forEach((aba) => {
   });
 }
 
+// ── 6c. espécies: mesma silhueta, outra pelagem, roupas iguais ─────
+{
+  ok(M.especies.map((e) => e.id).join() === 'onca,capivara,guara', 'as espécies esperadas não estão no catálogo');
+  ok(M.especieValida('xadrez') === 'onca' && M.especieValida(undefined) === 'onca', 'espécie inválida não cai na onça');
+  const miolo = (svg) => svg.slice(svg.indexOf('>') + 1, svg.lastIndexOf('</svg>'));
+  const pecas = [['hat', 'hat_crown'], ['glasses', 'glass_star'], ['outfit', 'shirt_mais']];
+  M.especies.forEach((esp) => {
+    const nu = M.svg({}, { especie: esp.id });
+    ok(!/\sid\s*=/.test(nu) && !/\son[a-z]+\s*=/i.test(nu) && !/url\(/.test(nu) && !/undefined|NaN|@\d+@/.test(nu),
+      esp.id + ': o desenho quebra uma regra de SVG seguro');
+    ok((nu.match(/</g) || []).length === (nu.match(/>/g) || []).length, esp.id + ': tag aberta sem fechar');
+    if (esp.id !== 'onca') {
+      ok(!/M -5 -3 q 3 -4/.test(nu), esp.id + ': ainda tem pintas de onça');
+      ok(nu !== M.svg({}, { especie: 'onca' }), esp.id + ': o desenho é igual ao da onça');
+      ok(nu.indexOf('#F7A928') < 0, esp.id + ': o pelo continua da cor da onça');
+    }
+    pecas.forEach(([slot, id]) => {
+      const vestido = M.svg({ [slot]: id }, { especie: esp.id });
+      ok(vestido.indexOf(miolo(M.peca(slot, id))) >= 0 || vestido.length > nu.length,
+        esp.id + ': a peça ' + id + ' não entrou no desenho');
+    });
+    ok(M.svg({}, { especie: esp.id }).indexOf(esp.nome + ', o mascote do Candy Math') > 0, esp.id + ': o nome padrão não é o da espécie');
+  });
+  // A peça entra igual em todas as espécies: o desenho vestido menos o desenho nu é o mesmo.
+  pecas.forEach(([slot, id]) => {
+    const extra = (esp) => M.svg({ [slot]: id }, { especie: esp }).length - M.svg({}, { especie: esp }).length;
+    ok(extra('onca') === extra('capivara') && extra('onca') === extra('guara'), 'a peça ' + id + ' muda de tamanho conforme a espécie');
+  });
+}
+
 // ── 7. a página carrega o desenho antes de quem o usa ────
 {
   const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');

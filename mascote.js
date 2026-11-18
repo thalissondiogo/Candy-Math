@@ -32,7 +32,12 @@
 
    API
    ---
-   CM_MASCOTE.svg(equip, { corte: 'inteiro' | 'busto', titulo: '...', estagio: 1..4 })
+   CM_MASCOTE.svg(equip, { corte: 'inteiro' | 'busto', titulo: '...', estagio: 1..4, especie: 'onca' | 'capivara' | 'guara' })
+
+   Espécies: o mesmo corpo (mesma silhueta, mesmas coordenadas) com outra
+   pelagem. Só as partes do corpo são recoloridas; roupas, bandana e
+   insígnia não mudam, então as 79 peças servem em todos. A onça é o padrão
+   e continua byte a byte igual.
    CM_MASCOTE.assinatura(equip)  → chave de cache; muda quando a roupa muda
    ========================================================= */
 (function (root) {
@@ -808,6 +813,41 @@ const VISTAS = {
   rosto:   { caixa: '44 18 136 138' },
 };
 
+// ── Espécies ─────────────────────────────────────────────
+// Fauna brasileira, mesma silhueta. Capivara e lobo-guará não têm pintas: as
+// manchas (todas feitas com MANCHA_D) saem do desenho dessas espécies.
+const ESPECIES = {
+  onca: { nome: 'Juba Candy', curto: 'Juba', de: 'da Juba', animal: 'onça-pintada', cores: null },
+  capivara: { nome: 'Capi Candy', curto: 'Capi', de: 'do Capi', animal: 'capivara', semPintas: true, cores: {
+    [PELO]: '#B07A4A', [PELO_ALTO]: '#C9925E', [PELO_BAIXO]: '#8E5E34', [MANCHA]: '#B07A4A', [MANCHA_ESC]: '#B07A4A',
+    [CREME]: '#E9D3AE', [ORELHA]: '#9A6A40', [NARIZ]: '#4A2E1E' } },
+  guara: { nome: 'Guará Candy', curto: 'Guará', de: 'do Guará', animal: 'lobo-guará', semPintas: true, cores: {
+    [PELO]: '#D9622B', [PELO_ALTO]: '#EA8452', [PELO_BAIXO]: '#B84E1E', [MANCHA]: '#D9622B', [MANCHA_ESC]: '#D9622B',
+    [CREME]: '#F7E6D0', [ORELHA]: '#F2B39A', [NARIZ]: '#2B1A12' } },
+};
+function recolorir(desenho, cores) {
+  if (!cores) return desenho;
+  // Cada cor original vira um marcador antes de virar a nova: assim uma cor
+  // nova igual a uma original (pinta = pelo) não é trocada duas vezes.
+  let s = desenho;
+  Object.keys(cores).forEach((de, i) => { s = s.split('"' + de + '"').join('"@' + i + '@"'); });
+  Object.keys(cores).forEach((de, i) => { s = s.split('"@' + i + '@"').join('"' + cores[de] + '"'); });
+  return s;
+}
+function semPintas(desenho) {
+  const marca = '<path d="' + MANCHA_D + '"';
+  let s = desenho;
+  for (let i = s.indexOf(marca); i >= 0; i = s.indexOf(marca)) s = s.slice(0, i) + s.slice(s.indexOf('/>', i) + 2);
+  return s;
+}
+const CORPOS = {};
+Object.keys(ESPECIES).forEach((k) => {
+  const c = ESPECIES[k].cores;
+  const limpa = ESPECIES[k].semPintas ? semPintas : (d) => d;
+  CORPOS[k] = { CABECA: limpa(recolorir(CABECA, c)), CORPO: limpa(recolorir(CORPO, c)), CAUDA: limpa(recolorir(CAUDA, c)) };
+});
+function especieValida(e) { return Object.prototype.hasOwnProperty.call(ESPECIES, e) ? e : 'onca'; }
+
 const cache = {};
 
 function svg(equip, opcoes) {
@@ -815,13 +855,15 @@ function svg(equip, opcoes) {
   const corte = VISTAS[o.corte] ? o.corte : 'inteiro';
   const e = equip || {};
   const estagio = estagioValido(o.estagio);
-  const chave = corte + '#' + assinatura(e) + '#' + estagio + '#' + (o.titulo || '');
+  const especie = especieValida(o.especie);
+  const corpoDa = CORPOS[especie];
+  const chave = corte + '#' + assinatura(e) + '#' + estagio + '#' + especie + '#' + (o.titulo || '');
   if (cache[chave]) return cache[chave];
 
   const peruca = e.wig ? PERUCAS[e.wig] : null;
   const cabeca =
     (peruca && peruca.tras ? peruca.tras() : '') +
-    CABECA +
+    corpoDa.CABECA +
     (peruca && peruca.frente ? peruca.frente() : '') +
     desenhoDe('hat', e.hat) +
     desenhoDe('mask', e.mask) +
@@ -842,9 +884,9 @@ function svg(equip, opcoes) {
     // Asa é peça de costas e não se repete na frente.
     const extraFrente = e.accessory === 'acc_asa' ? '' : desenhoDe('accessory', e.accessory);
     corpo =
-      SOMBRA + CAUDA + atras +
+      SOMBRA + corpoDa.CAUDA + atras +
       (peruca && peruca.tras ? peruca.tras() : '') +
-      CORPO +
+      corpoDa.CORPO +
       desenhoDe('shoes', e.shoes) +
       desenhoDe('outfit', e.outfit) +
       BANDANA_DESENHO +
@@ -853,7 +895,7 @@ function svg(equip, opcoes) {
       extraFrente;
   }
 
-  const titulo = String(o.titulo || 'Juba Candy, o mascote do Candy Math')
+  const titulo = String(o.titulo || ESPECIES[especie].nome + ', o mascote do Candy Math')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const saida = '<svg class="mascote-svg" viewBox="' + caixa +
     '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' + titulo +
@@ -953,6 +995,9 @@ root.CM_MASCOTE = {
   assinatura: assinatura,
   slots: SLOTS,
   estagioValido: estagioValido,
+  especies: Object.keys(ESPECIES).map((k) => ({ id: k, nome: ESPECIES[k].nome, curto: ESPECIES[k].curto, de: ESPECIES[k].de, animal: ESPECIES[k].animal })),
+  especie: function (k) { const e = ESPECIES[especieValida(k)]; return { nome: e.nome, curto: e.curto, de: e.de, animal: e.animal }; },
+  especieValida: especieValida,
   temPeca: function (slot, id) {
     if (slot === 'wig') return !!(id && PERUCAS[id]);
     return !!(id && POR_SLOT[slot] && POR_SLOT[slot][id]);

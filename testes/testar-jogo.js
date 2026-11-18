@@ -1130,6 +1130,26 @@ async function main() {
   await avaliar(c, "closeAllModals(); goHub(); true");
   confere('sem meta, a linha da família some do hub', await avaliar(c, "document.getElementById('hmFamilia').hidden && G.familia.limiteMin === 0"));
 
+  // ── 13o. escolha do mascote no Guarda-Roupa ──
+  await avaliar(c, "goHub(); openShop(); true");
+  await espera(400);
+  const esp0 = await avaliar(c, `({ opcoes:Array.prototype.slice.call(document.querySelectorAll('#wdEspecies [role=radio]')).map(function(b){
+      return { id:b.getAttribute('data-especie'), marcado:b.getAttribute('aria-checked'), texto:b.textContent.trim() }; }),
+    titulo:window.__J.texto('tituloShop') })`);
+  confere('o Guarda-Roupa oferece três bichos, com a onça marcada', esp0.opcoes.length === 3 && esp0.opcoes[0].id === 'onca' && esp0.opcoes[0].marcado === 'true', esp0);
+  confere('o título do Guarda-Roupa não traz mais o nome antigo (Pi)', esp0.titulo === 'Guarda-Roupa', esp0.titulo);
+  await avaliar(c, "document.querySelector('#wdEspecies [data-especie=capivara]').click(); true");
+  await espera(300);
+  const esp1 = await avaliar(c, `({ g:G.mascote, salvo:window.__J.save().mascote,
+    marcado:document.querySelector('#wdEspecies [data-especie=capivara]').getAttribute('aria-checked'),
+    palco:document.getElementById('wdMascote').dataset.figurino, rotulo:document.querySelector('#wdMascote svg').getAttribute('aria-label'),
+    pelo:document.getElementById('wdMascote').innerHTML.indexOf('#B07A4A') >= 0, roupas:JSON.stringify(G.equip) })`);
+  confere('escolher a capivara troca o mascote e grava no perfil', esp1.g === 'capivara' && esp1.salvo === 'capivara' && esp1.marcado === 'true', esp1);
+  confere('o palco desenha a capivara, com as mesmas roupas', esp1.pelo && /capivara/.test(esp1.palco), esp1);
+  confere('a descrição para leitor de tela usa o nome do bicho', /^Capi Candy/.test(esp1.rotulo), esp1.rotulo);
+  await avaliar(c, "closeAllModals(); goHub(); true");
+  confere('o hub também mostra a capivara', await avaliar(c, "/^Capi Candy/.test(document.querySelector('#oncaDisplay svg').getAttribute('aria-label'))"));
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);
@@ -1159,6 +1179,7 @@ async function main() {
   confere('a melhor sequência volta', voltou.seq === guardado.seq);
   confere('o histórico por conteúdo volta inteiro', voltou.hist === guardado.hist && voltou.hist > 0, voltou);
   confere('as metas do dia e a lista de dias voltam iguais', voltou.metas === guardado.metas, { guardado: guardado.metas, voltou: voltou.metas });
+  confere('o mascote escolhido volta depois de recarregar', await avaliar(c, "G.mascote === 'capivara' && document.getElementById('oncaDisplay').innerHTML.indexOf('#B07A4A') >= 0"));
   confere('o modo calmo volta ligado depois de recarregar',
     await avaliar(c, "G.prefs.calmo === true && document.body.classList.contains('pref-calmo')"));
   confere('a ficha de dias volta depois de recarregar', (await texto(c, 'hubDiasVal')) === '1 dia', await texto(c, 'hubDiasVal'));
