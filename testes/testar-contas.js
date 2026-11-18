@@ -237,7 +237,7 @@ async function main() {
   const medalhaTeo = await avaliar(c, `((window.__T.save('candymath_v3#${idTeo}')||{}).metas||{}).conquistas`);
   confere('a medalha do Téo vai para o save dele', !!medalhaTeo && !!medalhaTeo.ganhas.dom_1, medalhaTeo);
   // O Téo liga o modo calmo pela tela de Ajustes; a preferência é dele.
-  await avaliar(c, "openModal('modalAjustes'); document.querySelector('#modalAjustes input[data-pref=calmo]').click(); closeModal('modalAjustes'); true");
+  await avaliar(c, "openModal('modalAjustes'); document.querySelector('#modalAjustes input[data-pref=calmo]').click(); document.querySelector('#modalAjustes input[data-pref=dislexia]').click(); closeModal('modalAjustes'); true");
   confere('o modo calmo do Téo vai para o save dele',
     (await avaliar(c, `((window.__T.save('candymath_v3#${idTeo}')||{}).prefs||{}).calmo`)) === true);
   await avaliar(c, "G.familia.limiteMin = 30; saveState(); escolherMascote('guara'); true");
@@ -300,6 +300,7 @@ async function main() {
   confere('o limite de tempo do Téo não vale para a Manu', await avaliar(c, 'G.familia.limiteMin === 0'));
   confere('o bicho do Téo (lobo-guará) não passa para a Manu',
     await avaliar(c, "G.mascote === 'onca' && document.getElementById('oncaDisplay').innerHTML.indexOf('#D9622B') < 0"));
+  confere('a Manu entra sem a leitura facilitada do Téo', await avaliar(c, "G.prefs.dislexia === false && !document.body.classList.contains('pref-dislexia')"));
   confere('a Manu entra sem o modo calmo do Téo',
     await avaliar(c, "G.prefs.calmo === false && !document.body.classList.contains('pref-calmo')"));
   const medalhasManu = await avaliar(c, 'G.metas.conquistas');

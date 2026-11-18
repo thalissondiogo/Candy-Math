@@ -934,6 +934,22 @@
         <p class="aj-nota">Automática segue o seu nível, que sobe e desce sozinho. Escolher um nível fixa só aquele jogo: as rodadas dele não mudam o seu nível e não contam para a medalha de subir de nível. O ano continua o mesmo.</p>
         <div class="aj-niveis" id="ajNiveis"></div>
       </fieldset>
+      <fieldset class="aj-grupo">
+        <legend>Leitura e cores</legend>
+        <label class="aj-opcao"><input type="checkbox" data-pref="contraste">
+          <span><strong>Alto contraste</strong> Letras mais escuras, fundo liso e bordas mais fortes.</span></label>
+        <label class="aj-opcao"><input type="checkbox" data-pref="daltonismo">
+          <span><strong>Cores para daltonismo</strong> Certo e errado em azul e laranja (em vez de verde e vermelho), sempre com ✓ e ✗.</span></label>
+        <label class="aj-opcao"><input type="checkbox" data-pref="dislexia">
+          <span><strong>Leitura facilitada</strong> Letra simples do próprio aparelho, com mais espaço entre letras, palavras e linhas. Ajuda muita gente com dislexia.</span></label>
+      </fieldset>
+      <fieldset class="aj-grupo" role="radiogroup" aria-labelledby="ajVozRotulo">
+        <legend id="ajVozRotulo">Velocidade da voz</legend>
+        <label class="aj-opcao"><input type="radio" name="ajVoz" data-pref="vozVelocidade" value="0.75"> <span><strong>Mais devagar</strong></span></label>
+        <label class="aj-opcao"><input type="radio" name="ajVoz" data-pref="vozVelocidade" value="1"> <span><strong>Normal</strong></span></label>
+        <label class="aj-opcao"><input type="radio" name="ajVoz" data-pref="vozVelocidade" value="1.25"> <span><strong>Mais rápida</strong></span></label>
+        <p class="aj-nota">Vale para a pergunta e para a explicação lidas em voz alta. A voz em si se escolhe no botão Voz.</p>
+      </fieldset>
     </div>
   </div>
 

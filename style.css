@@ -1328,6 +1328,29 @@ body::after {
    não ganhou é quem mais precisa ler o critério. */
 .btn-medalhas { width:100%; margin-top:clamp(10px, 1.6vh, 14px); }
 .btn-medalhas-conta { font-family:'Nunito',sans-serif; font-weight:800; opacity:0.9; }
+/* ===== ACESSIBILIDADE (Ajustes, por estudante) =====
+   Alto contraste: texto quase preto, apoio escuro, fundos lisos, bordas fortes. */
+body.pref-contraste { --text:#1A0F00; --text2:#33264A; }
+body.pref-contraste .screen { background:#FFFFFF !important; }
+body.pref-contraste .modal-box, body.pref-contraste .hub-missoes, body.pref-contraste .hub-seletor,
+body.pref-contraste .velha-txt, body.pref-contraste .mapa-item, body.pref-contraste .conq-card { border-color:#1A0F00 !important; }
+body.pref-contraste .hm-item, body.pref-contraste .mapa-item, body.pref-contraste .conq-bloqueada { background:#FFFFFF; }
+body.pref-contraste :focus-visible { outline:4px solid #1A0F00 !important; outline-offset:3px; }
+/* Daltonismo: o par verde/vermelho vira azul/laranja, e certo/errado vêm escritos. */
+body.pref-daltonismo { --green:#1F6FD1; --red:#D9730D; }
+body.pref-daltonismo .pcell.blank.correct-cell::after,
+body.pref-daltonismo .pcell.blank.wrong-cell::after { position:absolute; top:2px; right:4px; font-weight:900; font-size:0.8em; }
+body.pref-daltonismo .pcell.blank.correct-cell::after { content:"\2713"; }
+body.pref-daltonismo .pcell.blank.wrong-cell::after { content:"\2717"; }
+body.pref-daltonismo .pcell.blank { position:relative; }
+/* Leitura facilitada: fontes do próprio aparelho, sem baixar nada, e mais ar.
+   Os ícones (<i>) ficam fora para não perder o desenho. */
+body.pref-dislexia, body.pref-dislexia *:not(i):not(svg):not(svg *) {
+  font-family:Verdana, Tahoma, "Trebuchet MS", system-ui, sans-serif !important;
+  letter-spacing:0.04em; word-spacing:0.12em;
+}
+body.pref-dislexia p, body.pref-dislexia li, body.pref-dislexia .qcard-text, body.pref-dislexia .velha-txt { line-height:1.6; }
+
 /* Modo calmo (Ajustes): sem o balanço contínuo da Juba no resumo e na
    abertura; os confetes são cortados no script. Movimento dos jogos fica em
    metade da velocidade, também no script. */

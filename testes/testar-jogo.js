@@ -890,6 +890,31 @@ async function main() {
   // Deixa ligado para conferir que volta depois de recarregar (seção 14).
   await avaliar(c, "openModal('modalAjustes'); document.querySelector('#modalAjustes input[data-pref=calmo]').click(); closeModal('modalAjustes'); true");
 
+  // Leitura, cores e velocidade da voz: cada opção muda o que deveria mudar.
+  await avaliar(c, `(function(){ openModal('modalAjustes');
+    ['contraste','daltonismo','dislexia'].forEach(function(k){ document.querySelector('#modalAjustes input[data-pref='+k+']').click(); });
+    document.querySelector('#modalAjustes input[data-pref=vozVelocidade][value="1.25"]').click(); return true; })()`);
+  await espera(200);
+  const a11y = await avaliar(c, `(function(){ var b=document.body, cs=getComputedStyle(b);
+    // A folha do Font Awesome vem de CDN (bloqueado neste ambiente): uma regra
+    // equivalente na classe .fa-solid faz o papel dela para a checagem.
+    var folha=document.createElement('style'); folha.textContent='.fa-solid{font-family:"FA-teste"}'; document.head.appendChild(folha);
+    var p=document.querySelector('#modalAjustes .aj-nota'), icone=document.querySelector('#modalAjustes .modal-hdr i');
+    return { classes:['pref-contraste','pref-daltonismo','pref-dislexia'].every(function(k){return b.classList.contains(k);}),
+      prefs:G.prefs, salvo:window.__J.save().prefs, verde:cs.getPropertyValue('--green').trim(), vermelho:cs.getPropertyValue('--red').trim(),
+      fonte:getComputedStyle(p).fontFamily, iconeFonte:getComputedStyle(icone).fontFamily, espaco:getComputedStyle(p).letterSpacing,
+      texto:cs.getPropertyValue('--text').trim(), voz:CM_NARRACAO.velocidade() }; })()`);
+  confere('alto contraste, daltonismo e leitura facilitada ligam pela tela e ficam no perfil',
+    a11y.classes && a11y.prefs.contraste && a11y.prefs.daltonismo && a11y.prefs.dislexia
+    && a11y.salvo.contraste === true && a11y.salvo.dislexia === true, a11y);
+  confere('alto contraste escurece o texto', a11y.texto === '#1A0F00', a11y.texto);
+  confere('daltonismo troca o verde e o vermelho por azul e laranja', a11y.verde === '#1F6FD1' && a11y.vermelho === '#D9730D', a11y);
+  confere('leitura facilitada usa letra do aparelho com mais espaço, sem baixar fonte',
+    /^Verdana/.test(a11y.fonte) && a11y.espaco !== 'normal' && a11y.espaco !== '0px', a11y);
+  confere('os ícones mantêm a fonte de ícones na leitura facilitada', /FA-teste/.test(a11y.iconeFonte), a11y.iconeFonte);
+  confere('a velocidade escolhida chega à voz', a11y.voz === 1.25 && a11y.salvo.vozVelocidade === 1.25, a11y);
+  await avaliar(c, "closeModal('modalAjustes'); true");
+
   // ── 13i. revisão espaçada: o que venceu abre a rodada do quiz ──
   const alvoRev = await avaliar(c, `(function(){
     for (var i=0;i<40;i++){ var it=C.sortear({ano:G.ano,nv:G.nivel,usadas:[]}); if (questaoDoConteudo(it.o)) {
@@ -1180,6 +1205,8 @@ async function main() {
   confere('o histórico por conteúdo volta inteiro', voltou.hist === guardado.hist && voltou.hist > 0, voltou);
   confere('as metas do dia e a lista de dias voltam iguais', voltou.metas === guardado.metas, { guardado: guardado.metas, voltou: voltou.metas });
   confere('o mascote escolhido volta depois de recarregar', await avaliar(c, "G.mascote === 'capivara' && document.getElementById('oncaDisplay').innerHTML.indexOf('#B07A4A') >= 0"));
+  confere('as opções de leitura, cor e voz voltam depois de recarregar',
+    await avaliar(c, "document.body.classList.contains('pref-contraste') && document.body.classList.contains('pref-daltonismo') && document.body.classList.contains('pref-dislexia') && CM_NARRACAO.velocidade() === 1.25"));
   confere('o modo calmo volta ligado depois de recarregar',
     await avaliar(c, "G.prefs.calmo === true && document.body.classList.contains('pref-calmo')"));
   confere('a ficha de dias volta depois de recarregar', (await texto(c, 'hubDiasVal')) === '1 dia', await texto(c, 'hubDiasVal'));

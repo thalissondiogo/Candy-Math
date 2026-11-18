@@ -457,6 +457,9 @@ function aplicarPreferencias() {
   const corpo = document.body;
   if (corpo) {
     corpo.classList.toggle('pref-calmo', p.calmo);
+    corpo.classList.toggle('pref-contraste', p.contraste);
+    corpo.classList.toggle('pref-daltonismo', p.daltonismo);
+    corpo.classList.toggle('pref-dislexia', p.dislexia);
   }
   if (window.CM_NARRACAO && CM_NARRACAO.definirVelocidade) CM_NARRACAO.definirVelocidade(p.vozVelocidade);
   pintarAjustes();
