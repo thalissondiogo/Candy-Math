@@ -375,7 +375,54 @@ confere('storage: só medalha do catálogo, com data possível', JSON.stringify(
   hostil.conquistas.ganhas);
 confere('storage: reforços negativos e degrau impossível voltam ao começo', hostil.conquistas.reforcos === 0 && hostil.conquistas.degrau === 1);
 confere('save sem conquistas abre com a coleção vazia',
-  JSON.stringify(M.sanitizar({ dias: [] }, tQ).conquistas) === '{"ganhas":{},"reforcos":0,"degrau":1}');
+  JSON.stringify(M.sanitizar({ dias: [] }, tQ).conquistas) === '{"ganhas":{},"reforcos":0,"degrau":1,"insignia":1}');
+
+// ── 5e. insígnia da bandana ─────────────────────────────────
+confere('quatro estágios, nos limites 0, 2, 5 e 8 medalhas',
+  JSON.stringify(M.INSIGNIAS.map((i) => [i.estagio, i.medalhas])) === '[[1,0],[2,2],[3,5],[4,8]]', M.INSIGNIAS);
+const comMedalhas = (n) => {
+  const st = M.vazio(tQ);
+  CQ.slice(0, n).forEach((c) => { st.conquistas.ganhas[c.id] = tQ; });
+  return st;
+};
+const estagios = [0, 1, 2, 4, 5, 7, 8, 10].map((n) => M.insignia(comMedalhas(n)).estagio);
+confere('0–1 medalha: 1 · 2–4: 2 · 5–7: 3 · 8+: 4', JSON.stringify(estagios) === '[1,1,2,2,3,3,4,4]', estagios);
+const meio = M.insignia(comMedalhas(3));
+confere('o retrato diz o nome e quanto falta para o próximo',
+  meio.nome === 'Broche de estrela' && meio.medalhas === 3 && meio.proximo.medalhas === 5 && meio.proximo.nome === 'Bordado dourado', meio);
+confere('no último estágio não há próximo', M.insignia(comMedalhas(10)).proximo === null);
+confere('sem dados, estágio 1', M.insignia(null).estagio === 1 && M.insignia({}).estagio === 1 && M.insignia(M.vazio(tQ)).estagio === 1);
+confere('medalha inventada no estado não conta para a insígnia',
+  M.insignia({ conquistas: { ganhas: { inventada: 1, outra: 2, mais: 3 } } }).estagio === 1);
+
+const ev = M.vazio(tQ);
+confere('nada a anunciar no lenço azul', M.colherInsignia(ev) === null);
+ev.conquistas.ganhas.dom_1 = tQ; ev.conquistas.ganhas.reforco_1 = tQ;
+const an2 = M.colherInsignia(ev);
+confere('duas medalhas anunciam o Broche de estrela', !!an2 && an2.estagio === 2 && an2.nome === 'Broche de estrela', an2);
+confere('o mesmo estágio não é anunciado de novo', M.colherInsignia(ev) === null);
+confere('o anúncio sobrevive a recarregar', M.colherInsignia(M.sanitizar(copia(ev), tQ)) === null);
+['dom_5', 'dom_10', 'dom_unid', 'degrau_3', 'degrau_4', 'reforco_10'].forEach((id) => { ev.conquistas.ganhas[id] = tQ; });
+const pulo4 = M.colherInsignia(ev);
+confere('quem pula de 2 para 8 medalhas recebe um aviso só, do estágio 4', !!pulo4 && pulo4.estagio === 4 && M.colherInsignia(ev) === null, pulo4);
+// Nunca regride: tempo, erro e novo dia não tiram medalha; logo não tiram estágio.
+const muitoDepois = M.sanitizar(copia(ev), tQ + 400 * 864e5);
+confere('400 dias sem jogar não tiram estágio', M.insignia(muitoDepois).estagio === 4);
+M.colherConquistas(muitoDepois, { hist: { 'Frações': { feitas: 100, certas: 1 } }, provas: [] }, tQ + 400 * 864e5);
+confere('errar muito depois não tira estágio', M.insignia(muitoDepois).estagio === 4);
+confere('apagar os dados volta ao lenço azul', M.insignia(M.vazio(tQ)).estagio === 1);
+// Storage hostil: um anúncio inflado não pode esconder o aviso de um estágio novo.
+const inflado = M.sanitizar({ conquistas: { ganhas: { dom_1: tQ, reforco_1: tQ }, insignia: 4 } }, tQ);
+confere('anúncio acima do que as medalhas sustentam volta a 1, e o aviso do estágio 2 sai',
+  inflado.conquistas.insignia === 1 && (M.colherInsignia(inflado) || {}).estagio === 2, inflado.conquistas);
+['texto', 0, 9, 2.5, null].forEach((v) => {
+  confere('anúncio inválido no storage (' + JSON.stringify(v) + ') vira 1',
+    M.sanitizar({ conquistas: { ganhas: {}, insignia: v } }, tQ).conquistas.insignia === 1);
+});
+const antigoSemInsignia = M.sanitizar({ conquistas: { ganhas: { dom_1: tQ, reforco_1: tQ, prova_1: tQ }, reforcos: 1, degrau: 1 } }, tQ);
+confere('save do incremento 4 (sem insignia) abre no estágio das medalhas e anuncia uma vez',
+  M.insignia(antigoSemInsignia).estagio === 2 && (M.colherInsignia(antigoSemInsignia) || {}).estagio === 2
+  && M.colherInsignia(antigoSemInsignia) === null);
 
 // ── 6. privacidade: nada disto sobe para a nuvem ────────────
 const nuvem = fs.readFileSync(path.join(RAIZ, 'nuvem.js'), 'utf8');

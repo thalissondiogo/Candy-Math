@@ -24,9 +24,15 @@
    personagem e fica por cima de qualquer camiseta, como um lenço no
    pescoço fica por cima do casaco.
 
+   A insígnia da bandana (estágios 2 a 4) entra logo depois da bandana e antes
+   da cabeça: fica por cima da roupa, como a própria bandana, e nada que vem
+   depois (cabeça, peruca, chapéu, rosto, extra na mão) passa pelo nó. Ela não
+   é peça da loja nem ocupa slot: vem das medalhas (metas.js). No estágio 1 o
+   desenho é o de sempre, byte por byte.
+
    API
    ---
-   CM_MASCOTE.svg(equip, { corte: 'inteiro' | 'busto', titulo: '...' })
+   CM_MASCOTE.svg(equip, { corte: 'inteiro' | 'busto', titulo: '...', estagio: 1..4 })
    CM_MASCOTE.assinatura(equip)  → chave de cache; muda quando a roupa muda
    ========================================================= */
 (function (root) {
@@ -150,6 +156,45 @@ const BANDANA_DESENHO =
   fio('M 110 168 L 110 198', BANDANA_ES, 2) +
   p('M 78 148 L 60 140 L 64 156 L 54 164 L 78 164 Z', BANDANA) +
   fio('M 66 150 L 74 156', BANDANA_ES, 2);
+
+// ── Insígnia da bandana ──────────────────────────────────
+// Traço fino próprio: no tamanho do nó, o traço de 3,2 das peças engoliria o
+// desenho. Ouro é o amarelo das estrelas do jogo; a fita é o rosa da loja.
+const OURO = '#FFD93D';
+const OURO_ES = '#D99A00';
+const FITA = '#FF6B9D';
+function fina(d, cor) {
+  return '<path d="' + d + '" fill="' + cor + '" stroke="' + TINTA +
+    '" stroke-width="1.6" stroke-linejoin="round"/>';
+}
+function estrelaFina(cx, cy, r) {
+  let d = '';
+  for (let i = 0; i < 10; i++) {
+    const raio = i % 2 ? r * 0.46 : r;
+    const ang = -Math.PI / 2 + i * Math.PI / 5;
+    d += (i ? 'L' : 'M') + (cx + Math.cos(ang) * raio).toFixed(1) + ' ' +
+      (cy + Math.sin(ang) * raio).toFixed(1) + ' ';
+  }
+  return fina(d + 'Z', OURO);
+}
+// Pesponto: costura tracejada por dentro da faixa e do triângulo da bandana.
+const PESPONTO =
+  '<path d="M 83 157 Q 110 170 137 157 M 94 171 L 110 192 L 126 171" fill="none" stroke="' + OURO +
+  '" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="3 3.2"/>';
+const BROCHE = estrelaFina(110, 177, 7.5);
+const MEDALHA =
+  fina('M 103 169 L 107 180 L 110 177 L 113 180 L 117 169 Z', FITA) +
+  '<circle cx="110" cy="184" r="7" fill="' + OURO + '" stroke="' + TINTA + '" stroke-width="1.6"/>' +
+  '<circle cx="110" cy="184" r="4" fill="none" stroke="' + OURO_ES + '" stroke-width="1.4"/>';
+const INSIGNIAS = {
+  1: '',
+  2: BROCHE,
+  3: PESPONTO + BROCHE,
+  4: PESPONTO + MEDALHA,
+};
+// Estágio fora de 1..4 (ausente, texto, número quebrado) vira 1: o desenho
+// de sempre. Nunca há bandana sem dono por causa de um dado torto.
+function estagioValido(n) { return Number.isInteger(n) && n >= 1 && n <= 4 ? n : 1; }
 
 const CABECA =
   // orelhas
@@ -769,7 +814,8 @@ function svg(equip, opcoes) {
   const o = opcoes || {};
   const corte = VISTAS[o.corte] ? o.corte : 'inteiro';
   const e = equip || {};
-  const chave = corte + '#' + assinatura(e) + '#' + (o.titulo || '');
+  const estagio = estagioValido(o.estagio);
+  const chave = corte + '#' + assinatura(e) + '#' + estagio + '#' + (o.titulo || '');
   if (cache[chave]) return cache[chave];
 
   const peruca = e.wig ? PERUCAS[e.wig] : null;
@@ -802,6 +848,7 @@ function svg(equip, opcoes) {
       desenhoDe('shoes', e.shoes) +
       desenhoDe('outfit', e.outfit) +
       BANDANA_DESENHO +
+      INSIGNIAS[estagio] +
       cabeca +
       extraFrente;
   }
@@ -905,6 +952,7 @@ root.CM_MASCOTE = {
   peca: peca,
   assinatura: assinatura,
   slots: SLOTS,
+  estagioValido: estagioValido,
   temPeca: function (slot, id) {
     if (slot === 'wig') return !!(id && PERUCAS[id]);
     return !!(id && POR_SLOT[slot] && POR_SLOT[slot][id]);

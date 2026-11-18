@@ -786,6 +786,45 @@ async function main() {
   confere('o foco do teclado entra na coleção', colecao.foco);
   await avaliar(c, "closeModal('modalConquistas'); closeModal('modalRecords'); true");
 
+  // ── 13g. a bandana evolui com as medalhas, uma vez, sem prêmio ──
+  const ins1 = await avaliar(c, `(function(){
+    var i=CM_METAS.insignia(G.metas); updateHubUI();
+    var s=document.querySelector('#oncaDisplay svg');
+    return { estagio:i.estagio, medalhas:i.medalhas, anunciada:G.metas.conquistas.insignia,
+      chave:document.getElementById('oncaDisplay').dataset.figurino, rotulo:s&&s.getAttribute('aria-label'),
+      costura:!!(s&&s.innerHTML.indexOf('stroke-dasharray')>=0), descricao:i.descricao };
+  })()`);
+  confere('as medalhas ganhas até aqui põem a bandana no estágio certo',
+    ins1.estagio === (ins1.medalhas >= 8 ? 4 : ins1.medalhas >= 5 ? 3 : ins1.medalhas >= 2 ? 2 : 1) && ins1.estagio >= 2, ins1);
+  confere('o estágio alcançado já foi anunciado (uma vez, no momento em que veio)', ins1.anunciada === ins1.estagio, ins1);
+  confere('o hub desenha a Juba com o estágio do perfil', ins1.chave.indexOf('#' + ins1.estagio + '#') > 0, ins1.chave);
+  confere('a descrição para leitor de tela cita a insígnia', ins1.rotulo.indexOf(ins1.descricao) >= 0 && ins1.descricao.length > 10, ins1);
+  confere('a costura dourada só aparece a partir do estágio 3', ins1.costura === (ins1.estagio >= 3), ins1);
+  const ins4 = await avaliar(c, `(function(){
+    var antes=G.stars, faltam=CM_METAS.CONQUISTAS.map(function(x){return x.id;}).filter(function(id){return !G.metas.conquistas.ganhas[id];});
+    // Medalhas que faltam para 8, como se tivessem vindo agora (o critério de cada uma já é testado em 13f).
+    while (Object.keys(G.metas.conquistas.ganhas).length < 8) G.metas.conquistas.ganhas[faltam.shift()] = Date.now();
+    // Medalhas postas à mão: normalizar como uma leitura do save faria (ordem do catálogo).
+    G.metas = CM_METAS.sanitizar(JSON.parse(JSON.stringify(G.metas)), Date.now());
+    var bandanas=function(){ return window.__J.aviso().filter(function(t){ return /bandana/i.test(t); }).length; };
+    premiarMetas(); var aviso=window.__J.aviso().join(' | '), avisos1=bandanas();
+    var depois=G.stars; premiarMetas(); saveState(); updateHubUI(); var avisos2=bandanas();
+    var s=document.querySelector('#oncaDisplay svg');
+    return { estagio:CM_METAS.insignia(G.metas).estagio, aviso:aviso, repetido:G.stars-depois, avisos1:avisos1, avisos2:avisos2,
+      rotulo:s&&s.getAttribute('aria-label'), salvo:((window.__J.save().metas||{}).conquistas||{}).insignia,
+      fita:!!(s&&s.innerHTML.indexOf('#FF6B9D')>=0) };
+  })()`);
+  confere('oito medalhas levam a bandana à medalha da confeitaria', ins4.estagio === 4 && ins4.fita, ins4);
+  confere('a mudança é avisada com o nome do estágio', /A bandana da Juba mudou: Medalha da confeitaria\./.test(ins4.aviso), ins4.aviso);
+  confere('o estágio não é anunciado de novo nem paga nada', ins4.repetido === 0 && ins4.avisos1 >= 1 && ins4.avisos2 === ins4.avisos1, ins4);
+  confere('o estágio anunciado fica gravado no save', ins4.salvo === 4, ins4.salvo);
+  confere('a Juba do hub é descrita com a medalha da confeitaria', /medalha da confeitaria/.test(ins4.rotulo), ins4.rotulo);
+  await avaliar(c, "openModal('modalRecords'); openModal('modalConquistas')");
+  await espera(300);
+  confere('o modal de Medalhas diz a insígnia atual e que é a última',
+    /^Bandana da Juba: Medalha da confeitaria\. É a última/.test((await texto(c, 'conqInsignia')) || ''), await texto(c, 'conqInsignia'));
+  await avaliar(c, "closeModal('modalConquistas'); closeModal('modalRecords'); true");
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);
@@ -821,6 +860,10 @@ async function main() {
   const medalhasVolta = await avaliar(c, 'JSON.stringify(G.metas.conquistas)');
   confere('as medalhas e as datas voltam iguais depois de recarregar', medalhasVolta === guardado.conquistas,
     { guardado: guardado.conquistas, voltou: medalhasVolta });
+  const bandanaVolta = await avaliar(c, `({ estagio:CM_METAS.insignia(G.metas).estagio,
+    chave:document.getElementById('oncaDisplay').dataset.figurino, aviso:window.__J.aviso().join(' | ') })`);
+  confere('depois de recarregar a Juba volta com a mesma bandana, sem novo aviso',
+    bandanaVolta.estagio === 4 && bandanaVolta.chave.indexOf('#4#') > 0 && !/bandana/i.test(bandanaVolta.aviso), bandanaVolta);
   confere('as missões cumpridas voltam pagas depois de recarregar, sem pagar de novo',
     missoesVolta.pagas.length === 2 && missoesVolta.stars === guardado.stars
     && missoesVolta.contas.every((t) => t === 'Concluída'), missoesVolta);
@@ -873,6 +916,30 @@ async function main() {
   confere('save sem metas começa as metas do zero, no dia de hoje',
     antigo.m.dias.length === 0 && antigo.m.dia.respostas === 0 && antigo.m.dia.chave === antigo.hoje, antigo.m);
   confere('save sem metas não é tratado como danificado', antigo.danificado === null);
+  confere('save sem metas abre com o lenço azul de sempre',
+    await avaliar(c, "CM_METAS.insignia(G.metas).estagio===1 && /só de pelo e bandana azul|^Juba Candy vestindo/.test(document.querySelector('#oncaDisplay svg').getAttribute('aria-label'))"));
+
+  // ── 14d. save do incremento 4: medalhas sem o campo da insígnia ──
+  /* Quem jogou antes da evolução já tem medalhas. Ao abrir, a bandana vai para
+     o estágio que elas sustentam e o aviso sai uma vez; na abertura seguinte, não. */
+  await avaliar(c, `(function(){ var q=Date.now(); localStorage.setItem('candymath_v3', JSON.stringify({stars:200, ano:5, nivel:2,
+    hist:{}, equip:{}, owned:[], comoJogarVisto:{quiz:true},
+    metas:{ dias:[], conquistas:{ ganhas:{ dom_1:q, reforco_1:q, prova_1:q }, reforcos:1, degrau:1 } } })); return true; })()`);
+  await abrir(c, 390, 844, BASE);
+  await espera(700);
+  await avaliar(c, dentro);
+  const inc4 = await avaliar(c, `({ estagio:CM_METAS.insignia(G.metas).estagio, anunciada:G.metas.conquistas.insignia,
+    aviso:window.__J.aviso().join(' | '), stars:G.stars,
+    salvo:((JSON.parse(localStorage.getItem('candymath_v3'))||{}).metas||{}).conquistas })`);
+  confere('save com 3 medalhas abre no Broche de estrela', inc4.estagio === 2, inc4);
+  confere('a evolução de um save antigo é avisada ao abrir', /A bandana da Juba mudou: Broche de estrela/.test(inc4.aviso), inc4.aviso);
+  confere('o aviso não paga estrela', inc4.stars === 200, inc4.stars);
+  confere('o anúncio é gravado logo na abertura', inc4.salvo && inc4.salvo.insignia === 2, inc4.salvo);
+  await abrir(c, 390, 844, BASE);
+  await espera(700);
+  await avaliar(c, dentro);
+  confere('na abertura seguinte não há aviso de novo',
+    !(await avaliar(c, "/bandana/i.test(window.__J.aviso().join(' '))")) && (await avaliar(c, 'CM_METAS.insignia(G.metas).estagio')) === 2);
 
   // ── 15. nenhum erro de console no percurso ──
   const gritos = c.eventos.filter((e) =>

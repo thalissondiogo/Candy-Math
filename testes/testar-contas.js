@@ -236,6 +236,18 @@ async function main() {
   await avaliar(c, "for(var i=0;i<8;i++){registrarTrabalho({o:'Domínio do Téo',u:'numeros'});registrarResultado(true);}saveState();true");
   const medalhaTeo = await avaliar(c, `((window.__T.save('candymath_v3#${idTeo}')||{}).metas||{}).conquistas`);
   confere('a medalha do Téo vai para o save dele', !!medalhaTeo && !!medalhaTeo.ganhas.dom_1, medalhaTeo);
+  // Segunda medalha (reforço acertado) leva a bandana do Téo ao estágio 2.
+  await avaliar(c, 'CM_METAS.registrarReforco(G.metas);premiarMetas();saveState();true');
+  const bandanaTeo = await avaliar(c, `({ estagio:CM_METAS.insignia(G.metas).estagio,
+    salvo:(((window.__T.save('candymath_v3#${idTeo}')||{}).metas||{}).conquistas||{}).insignia })`);
+  confere('com duas medalhas a bandana do Téo evolui e o anúncio vai para o save dele',
+    bandanaTeo.estagio === 2 && bandanaTeo.salvo === 2, bandanaTeo);
+  await avaliar(c, "CM_CONTAS.mostrar('perfis');true");
+  // Confere o desenho, não só o texto: o broche começa no ponto M110.0 169.5.
+  const palcoTeo = await avaliar(c, "(function(){var s=document.querySelector('#entradaMascote svg');"
+    + "return {rotulo:s?s.getAttribute('aria-label'):'', broche:!!s&&s.innerHTML.indexOf('M110.0 169.5')>=0};})()");
+  confere('o palco da entrada desenha e descreve a insígnia do perfil ativo (Téo)',
+    palcoTeo.broche && /broche de estrela/.test(palcoTeo.rotulo), palcoTeo);
   // A medalha (e uma missão, se cumprida) pagam estrelas: o saldo do Téo é o
   // que ficou gravado, não mais os 90 de antes.
   const estrelasTeo = await avaliar(c, `(window.__T.save('candymath_v3#${idTeo}')||{}).stars`);
@@ -270,6 +282,16 @@ async function main() {
   const metasManu = await avaliar(c, 'G.metas');
   confere('Manu entra com as próprias metas, sem os dias do Téo',
     metasManu.dia.respostas === 0 && metasManu.semana.respostas === 0 && metasManu.dias.length === 0, metasManu);
+  const bandanaManu = await avaliar(c, `({ estagio:CM_METAS.insignia(G.metas).estagio,
+    hub:document.querySelector('#oncaDisplay svg').getAttribute('aria-label'),
+    chave:document.getElementById('oncaDisplay').dataset.figurino })`);
+  confere('a Manu continua com o lenço azul: a evolução do Téo não passa para ela',
+    bandanaManu.estagio === 1 && !/broche|bordad|medalha da confeitaria/i.test(bandanaManu.hub) && bandanaManu.chave.indexOf('#1#') > 0, bandanaManu);
+  await avaliar(c, "CM_CONTAS.mostrar('perfis');true");
+  const palcoManu = await avaliar(c, "(function(){var s=document.querySelector('#entradaMascote svg');"
+    + "return {rotulo:s.getAttribute('aria-label'), broche:s.innerHTML.indexOf('M110.0 169.5')>=0};})()");
+  confere('o palco da entrada, com a Manu ativa, desenha a bandana dela (sem broche)',
+    palcoManu.rotulo === 'Juba Candy esperando para jogar' && !palcoManu.broche, palcoManu);
   const medalhasManu = await avaliar(c, 'G.metas.conquistas');
   confere('a Manu entra sem as medalhas do Téo',
     Object.keys(medalhasManu.ganhas).length === 0 && medalhasManu.reforcos === 0, medalhasManu);

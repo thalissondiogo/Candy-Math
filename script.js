@@ -189,6 +189,13 @@ function premiarMetas() {
     G.stars += c.estrelas;
     recados.push('Nova medalha: ' + c.nome + '!' + (c.estrelas ? ' Ganhou ' + c.estrelas + ' estrelas.' : ''));
   });
+  // Estágio novo da bandana: avisado uma vez por perfil, sem prêmio (as
+  // medalhas já pagaram) e sem efeito na tela além do próprio desenho.
+  const insignia = CM_METAS.colherInsignia(G.metas);
+  if (insignia) {
+    recados.push('A bandana da Juba mudou: ' + insignia.nome + '.');
+    pintarMascotes();
+  }
   if (recados.length) showToast(recados.join(' '));
   return recados.length;
 }
@@ -245,6 +252,10 @@ function pintarConquistas() {
   });
   const ganhas = lista.filter((c) => c.ganha).length;
   $('conqResumo').textContent = ganhas + ' de ' + lista.length + ' medalhas';
+  const ins = insigniaAtual();
+  $('conqInsignia').textContent = 'Bandana da Juba: ' + ins.nome + '. ' + (ins.proximo
+    ? 'A próxima (' + ins.proximo.nome.toLowerCase() + ') vem com ' + ins.proximo.medalhas + ' medalhas.'
+    : 'É a última: a Juba já usa a medalha da confeitaria.');
   return { ganhas: ganhas, total: lista.length };
 }
 
@@ -905,12 +916,17 @@ function marcarChips() {
 //    guarda a assinatura do figurino que já está desenhado: vestir uma
 //    peça repinta o boneco, abrir um jogo com a mesma roupa não repinta.
 // ──────────────────────────────────────────────────
-function pintarUmMascote(el, equip, corte, titulo) {
+// A insígnia da bandana vem das medalhas deste perfil (metas.js): estágio 1 é
+// o lenço azul de sempre. Não é peça da loja e não ocupa slot.
+function insigniaAtual() { return CM_METAS.insignia(G.metas); }
+
+function pintarUmMascote(el, equip, corte, titulo, estagio) {
   if (!el || !MASCOTE) return;
-  const chave = corte + '#' + MASCOTE.assinatura(equip) + '#' + (titulo || '');
+  const est = estagio || 1;
+  const chave = corte + '#' + MASCOTE.assinatura(equip) + '#' + est + '#' + (titulo || '');
   if (el.dataset.figurino === chave) return;
   el.dataset.figurino = chave;
-  el.innerHTML = MASCOTE.svg(equip, { corte: corte, titulo: titulo });
+  el.innerHTML = MASCOTE.svg(equip, { corte: corte, titulo: titulo, estagio: est });
 }
 
 // Quem não vê o boneco precisa ouvir o que ele está vestindo: sem isto, o
@@ -920,16 +936,21 @@ function descreverFigurino(equip) {
     .map((s) => equip[s] && GR.porId(equip[s]))
     .filter(Boolean)
     .map((i) => i.name);
-  return pecas.length
-    ? 'Juba Candy vestindo ' + pecas.join(', ')
-    : 'Juba Candy, só de pelo e bandana azul';
+  const insignia = insigniaAtual().descricao;
+  if (!insignia) {
+    return pecas.length
+      ? 'Juba Candy vestindo ' + pecas.join(', ')
+      : 'Juba Candy, só de pelo e bandana azul';
+  }
+  return 'Juba Candy ' + insignia + (pecas.length ? ', vestindo ' + pecas.join(', ') : '');
 }
 
 function pintarMascotes() {
   const descricao = descreverFigurino(G.equip);
+  const estagio = insigniaAtual().estagio;
   document.querySelectorAll('[data-mascote]').forEach((el) => {
     const corte = el.getAttribute('data-mascote');
-    pintarUmMascote(el, G.equip, corte, corte === 'rosto' ? null : descricao);
+    pintarUmMascote(el, G.equip, corte, corte === 'rosto' ? null : descricao, estagio);
   });
   pintarPalco();
 }
@@ -952,7 +973,7 @@ function pintarPalco() {
   const palco = $('wdMascote');
   if (!palco) return;
   const equip = equipDeProva();
-  pintarUmMascote(palco, equip, 'inteiro', descreverFigurino(equip));
+  pintarUmMascote(palco, equip, 'inteiro', descreverFigurino(equip), insigniaAtual().estagio);
   const aviso = $('wdProva');
   if (!aviso) return;
   const item = pecaEmProva ? GR.porId(pecaEmProva) : null;

@@ -120,6 +120,68 @@ GR.abas.forEach((aba) => {
   ok(combinados === 36, 'esperava 36 conferências de figurino combinado, fiz ' + combinados);
 }
 
+// ── 6b. insígnia da bandana (estágios 1 a 4) ─────────────
+// O estágio vem das medalhas (metas.js). O 1 é o desenho de sempre, byte por
+// byte; 2 a 4 acrescentam só a insígnia, entre a bandana e a cabeça, sem tocar
+// em nenhuma peça.
+{
+  const equips = [GR.equipVazio()];
+  GR.itens.forEach((i) => equips.push(Object.assign(GR.equipVazio(), { [i.slot]: i.id })));
+  equips.push(Object.assign(GR.equipVazio(), { outfit: 'look_fada', accessory: 'acc_star', hat: 'hat_crown', glasses: 'glass_star' }));
+  let iguais = true, so = true, ordem = true, invalidos = true;
+  const amostras = [];
+  equips.forEach((eq) => ['inteiro', 'busto', 'rosto'].forEach((corte) => {
+    const padrao = M.svg(eq, { corte: corte });
+    if (M.svg(eq, { corte: corte, estagio: 1 }) !== padrao) iguais = false;
+    [0, 5, -1, 2.5, '3', null, undefined, NaN].forEach((v) => {
+      if (M.svg(eq, { corte: corte, estagio: v }) !== padrao) invalidos = false;
+    });
+    [2, 3, 4].forEach((est) => {
+      const comInsignia = M.svg(eq, { corte: corte, estagio: est });
+      amostras.push(comInsignia);
+      if (corte === 'rosto') { if (comInsignia !== padrao) so = false; return; }
+      // Tirando a insígnia, sobra exatamente o desenho de sempre.
+      const pos = comInsignia.indexOf(padrao.slice(0, 40));
+      const a = padrao, b = comInsignia;
+      let i = 0; while (i < a.length && a[i] === b[i]) i++;
+      const extra = b.length - a.length;
+      if (b.slice(0, i) + b.slice(i + extra) !== a || pos !== 0) so = false;
+      // E ela entra logo depois da bandana, antes da cabeça (orelhas).
+      const bandana = b.indexOf('M 78 148 L 60 140 L 64 156 L 54 164 L 78 164 Z');
+      const insignia = i;
+      const cabeca = b.indexOf('<circle cx="70" cy="50" r="21"');
+      if (!(bandana >= 0 && bandana < insignia && insignia < cabeca)) ordem = false;
+    });
+  }));
+  ok(iguais, 'estágio 1 explícito não é idêntico ao desenho sem estágio');
+  ok(invalidos, 'estágio inválido (0, 5, texto, fração, nulo) não cai no desenho de sempre');
+  ok(so, 'estágios 2 a 4 mudam alguma coisa além de acrescentar a insígnia (ou mudam o recorte do rosto)');
+  ok(ordem, 'a insígnia não está entre a bandana e a cabeça');
+  const juntas = amostras.join('\n');
+  ok(!/\sid\s*=/.test(juntas) && !/<script/i.test(juntas) && !/\son[a-z]+\s*=/i.test(juntas)
+    && !/url\(/.test(juntas) && !/href\s*=/.test(juntas) && !/undefined|NaN/.test(juntas),
+    'a insígnia quebra uma das regras de SVG seguro (id, script, on…=, url, href, NaN)');
+  amostras.forEach((sv, i) => ok((sv.match(/</g) || []).length === (sv.match(/>/g) || []).length, 'insígnia ' + i + ': tag aberta sem fechar'));
+  const e1 = M.svg(GR.equipVazio(), { estagio: 2 }), e2 = M.svg(GR.equipVazio(), { estagio: 3 }), e3 = M.svg(GR.equipVazio(), { estagio: 4 });
+  ok(e1 !== e2 && e2 !== e3 && e1 !== e3, 'os estágios 2, 3 e 4 não são desenhos diferentes');
+  ok(/stroke-dasharray/.test(e2) && /stroke-dasharray/.test(e3) && !/stroke-dasharray/.test(e1), 'o pesponto não aparece só nos estágios 3 e 4');
+  ok(/#FF6B9D/.test(e3) && !/#FF6B9D/.test(e2), 'a fita da medalha não é exclusiva do estágio 4');
+  ok(M.estagioValido(3) === 3 && M.estagioValido('3') === 1 && M.estagioValido(7) === 1, 'estagioValido não segura entradas tortas');
+  // Impressão digital do Juba sem roupa, tirada do código ANTES da insígnia
+  // existir (commit d427ef1). Se mudar, o "desenho de sempre" mudou: só
+  // atualize estes valores se a mudança for de propósito.
+  const ORIGINAL = {
+    inteiro: '931c65c0efe9c855c61dca1a26372bd8eefad86c90fadc3cb31c0bd879bef1cf',
+    busto: '04b4f1221ba673c22447f6b2e000a541dfccad324983ed0e18de65885ecd3c19',
+    rosto: '28f18d140f6bfed7a4b31bf58a96c05aa26c34aa260407bf6fc1b4a4adc28346',
+  };
+  const hash = (t) => require('crypto').createHash('sha256').update(t).digest('hex');
+  Object.keys(ORIGINAL).forEach((corte) => {
+    ok(hash(M.svg({}, { corte: corte })) === ORIGINAL[corte], 'o estágio 1 (' + corte + ') não é mais o desenho original, byte por byte');
+    ok(hash(M.svg({}, { corte: corte, estagio: 1 })) === ORIGINAL[corte], 'estágio 1 explícito (' + corte + ') difere do original');
+  });
+}
+
 // ── 7. a página carrega o desenho antes de quem o usa ────
 {
   const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');

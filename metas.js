@@ -29,7 +29,8 @@
        dias:   ['AAAA-MM-DD', ...]    dias com atividade, em ordem, sem repetir
        recordeDias: n                 maior sequência já feita (sobrevive ao teto da lista)
        marcos: [3, 7, ...]            marcos de dias seguidos já premiados (uma vez cada)
-       conquistas: { ganhas: {id: quando}, reforcos: n, degrau: 1..4 }
+       conquistas: { ganhas: {id: quando}, reforcos: n, degrau: 1..4, insignia: 1..4 }
+                                      (insignia = último estágio da bandana já anunciado)
        dia:    PERIODO do dia de hoje
        semana: PERIODO da semana atual (chave = data da segunda-feira)
      }
@@ -123,6 +124,18 @@ const CONQUISTAS = [
     descricao: 'Acerte 75% ou mais de uma Prova de Aprendizagem.' },
 ];
 const IDS_CONQUISTAS = CONQUISTAS.map((c) => c.id);
+
+// ── insígnia da bandana (evolução do mascote) ────────────
+// Vem só do número de medalhas, que nunca diminui: ficar sem jogar, errar ou
+// gastar estrelas na loja não tira estágio. Não paga nada — as medalhas já
+// pagam. Só "Apagar dados" volta ao lenço azul, como volta todo o resto.
+const INSIGNIAS = [
+  // descricao: o que o leitor de tela ouve depois de "Juba Candy".
+  { estagio: 1, medalhas: 0, nome: 'Lenço azul', descricao: '' },
+  { estagio: 2, medalhas: 2, nome: 'Broche de estrela', descricao: 'com broche de estrela na bandana' },
+  { estagio: 3, medalhas: 5, nome: 'Bordado dourado', descricao: 'com bandana bordada de dourado e broche de estrela' },
+  { estagio: 4, medalhas: 8, nome: 'Medalha da confeitaria', descricao: 'com bandana bordada de dourado e a medalha da confeitaria' },
+];
 const TETO = 999999;
 const FORMA_DIA = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -174,7 +187,7 @@ function periodoVazio(chave) {
   return { chave: chave, respostas: 0, acertos: 0, rodadas: 0, boas: 0, perfeitas: 0, pagas: [], porUnidade: porUnidade };
 }
 
-function conquistasVazias() { return { ganhas: {}, reforcos: 0, degrau: 1 }; }
+function conquistasVazias() { return { ganhas: {}, reforcos: 0, degrau: 1, insignia: 1 }; }
 
 function vazio(agora) {
   return { dias: [], recordeDias: 0, marcos: [], conquistas: conquistasVazias(),
@@ -194,6 +207,10 @@ function conquistasSanit(c, agora) {
   });
   out.reforcos = contador(c.reforcos);
   out.degrau = Number.isInteger(c.degrau) && c.degrau >= 1 && c.degrau <= 4 ? c.degrau : 1;
+  // O anunciado nunca passa do estágio que as medalhas guardadas sustentam:
+  // um número inflado no storage não pode calar o aviso de um estágio novo.
+  const sustentado = estagioPorMedalhas(Object.keys(out.ganhas).length);
+  out.insignia = Number.isInteger(c.insignia) && c.insignia >= 1 && c.insignia <= sustentado ? c.insignia : 1;
   return out;
 }
 
@@ -516,6 +533,35 @@ function colherConquistas(estado, dados, agora) {
   return novas;
 }
 
+function estagioPorMedalhas(n) {
+  let estagio = 1;
+  INSIGNIAS.forEach((i) => { if (n >= i.medalhas) estagio = i.estagio; });
+  return estagio;
+}
+
+// O retrato da insígnia, para o desenho e para o modal de Medalhas.
+function insignia(estado) {
+  const ganhas = estado && estado.conquistas && estado.conquistas.ganhas && typeof estado.conquistas.ganhas === 'object'
+    ? Object.keys(estado.conquistas.ganhas).filter((id) => IDS_CONQUISTAS.indexOf(id) >= 0).length : 0;
+  const estagio = estagioPorMedalhas(ganhas);
+  const atual = INSIGNIAS[estagio - 1];
+  const prox = INSIGNIAS[estagio] || null;
+  return { estagio: estagio, nome: atual.nome, descricao: atual.descricao, medalhas: ganhas,
+    proximo: prox ? { estagio: prox.estagio, nome: prox.nome, medalhas: prox.medalhas } : null };
+}
+
+// O estágio novo, uma vez por perfil: devolve a insígnia só se ela ainda não
+// foi anunciada, e anota na hora.
+function colherInsignia(estado) {
+  if (!estado) return null;
+  virar(estado, Date.now());
+  const i = insignia(estado);
+  const anunciada = Number.isInteger(estado.conquistas.insignia) ? estado.conquistas.insignia : 1;
+  if (i.estagio <= anunciada) return null;
+  estado.conquistas.insignia = i.estagio;
+  return { estagio: i.estagio, nome: i.nome };
+}
+
 const CM_METAS = {
   UNIDADES: UNIDADES.slice(),
   MAX_DIAS: MAX_DIAS,
@@ -544,6 +590,9 @@ const CM_METAS = {
   registrarDegrau: registrarDegrau,
   conquistas: conquistas,
   colherConquistas: colherConquistas,
+  INSIGNIAS: JSON.parse(JSON.stringify(INSIGNIAS)),
+  insignia: insignia,
+  colherInsignia: colherInsignia,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = CM_METAS;

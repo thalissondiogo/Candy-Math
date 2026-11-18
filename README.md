@@ -58,7 +58,7 @@ script.js             estado, fluxo de rodada, feedback pedagógico, save/load
 conteudo.js           motor de conteúdo: 55 geradores com valores calculados
 banco-itens.js        banco autoral: 311 situações escritas + 96 afirmações V/F
 guarda-roupa.js       catálogo da loja: 79 peças, preços, abas e conjuntos
-mascote.js            Juba Candy em SVG: desenho por peça, recortes e figurino
+mascote.js            Juba Candy em SVG: desenho por peça, recortes, figurino e insígnia da bandana (estágios 1 a 4)
 metas.js              contagem por dia e semana (missões, dias de atividade, conquistas), só no aparelho
 contas.js             conta de quem acompanha, perfis de estudante, PIN e porta do adulto
 privacidade.js        autorização por finalidade: o que pode sair, para onde, e a revogação
@@ -657,8 +657,8 @@ npm run jogo     # uma partida completa, a loja e o figurino, clicando nos botõ
 | `node testes/testar-politicas-sql.js` | invariantes de autorização no schema, na migração e nos arquivos do navegador |
 | `node testes/testar-autorizacao.js` | A0: o interruptor do duelo é lido antes de cada chamada de rede. A parte remota pede três contas de teste em `.env` e, sem elas, se declara **não executada** |
 | `node testes/testar-narracao.js` | a função de voz com `fetch` e `env` falsos: validação, limite, upstream, o cache de áudio no Supabase (procura, acerto, gravação, poda e as quedas do banco), a recusa sem autorização e a revogação no meio da partida — e um aviso na primeira linha de que é simulado |
-| `node testes/testar-metas.js` | a contagem de `metas.js` sem navegador: dia e semana no fuso do aparelho, viradas com o jogo aberto, placar por unidade temática, sequência de dias e marcos, missões (só acerto conta, pagamento único, sorteio estável por data), medalhas (domínio por conteúdo, degrau subido pelo jogo, reforço, prova sem estrela), storage hostil e a ausência das metas no pacote da nuvem |
-| `node testes/testar-mascote.js` | as 79 peças: catálogo, desenho de cada uma, vitrine, exclusividade por categoria e a página de pré-visualização |
+| `node testes/testar-metas.js` | a contagem de `metas.js` sem navegador: dia e semana no fuso do aparelho, viradas com o jogo aberto, placar por unidade temática, sequência de dias e marcos, missões (só acerto conta, pagamento único, sorteio estável por data), medalhas (domínio por conteúdo, degrau subido pelo jogo, reforço, prova sem estrela), insígnia da bandana (limites 2/5/8, aviso único, nunca regride), storage hostil e a ausência das metas no pacote da nuvem |
+| `node testes/testar-mascote.js` | as 79 peças: catálogo, desenho de cada uma, vitrine, exclusividade por categoria e a página de pré-visualização; a insígnia da bandana nos quatro estágios (SVG seguro, camada entre bandana e cabeça, estágio 1 idêntico ao desenho original por SHA-256) |
 | `node testes/validar-banco.js` | os 311 itens e as 96 afirmações: id único, 4 alternativas sem repetição (por valor, não por texto), `valor` batendo com a resposta, unidade válida, código BNCC na lista oficial (`testes/bncc-matematica.txt`) |
 | `node testes/validar-conteudo.js` | os 55 geradores em 9 anos × 4 níveis, cada item do banco, afirmações V/F, os jogos de sequência/ordenação/memória/cruzadinha/balança, as representações em doces, a duplicata numérica e o texto de reserva `(opção N)` |
 | `node testes/relatorio-bncc.js` | vínculo código ↔ ano ↔ unidade e cobertura; regrava `RELATORIO-BNCC.md` com semente fixa |

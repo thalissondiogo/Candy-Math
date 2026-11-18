@@ -941,13 +941,21 @@ function pintarEntrada() {
   if (palco && root.CM_MASCOTE) {
     const p = ativo() || perfis()[0];
     let equip = null;
+    // A insígnia da bandana é do perfil mostrado, lida do save dele: sem save,
+    // ou com save torto, é o lenço azul de sempre (estágio 1).
+    let insignia = { estagio: 1, descricao: '' };
     if (p) {
-      try { equip = (JSON.parse(root.localStorage.getItem(CHAVE_SAVE + '#' + p.id) || 'null') || {}).equip; } catch (e) { equip = null; }
+      try {
+        const salvo = JSON.parse(root.localStorage.getItem(CHAVE_SAVE + '#' + p.id) || 'null') || {};
+        equip = salvo.equip;
+        if (root.CM_METAS) insignia = root.CM_METAS.insignia(root.CM_METAS.sanitizar(salvo.metas, Date.now()));
+      } catch (e) { equip = null; insignia = { estagio: 1, descricao: '' }; }
     }
     // Corpo inteiro, não busto: o recorte de busto terminava num corte reto na
     // altura dos ombros, sem moldura, e lia-se como imagem cortada pela metade.
     // A Juba de pé é a mesma do splash — é ela que a criança reconhece.
-    palco.innerHTML = root.CM_MASCOTE.svg(equip || {}, { corte: 'inteiro', titulo: 'Juba Candy esperando para jogar' });
+    palco.innerHTML = root.CM_MASCOTE.svg(equip || {}, { corte: 'inteiro', estagio: insignia.estagio,
+      titulo: 'Juba Candy' + (insignia.descricao ? ' ' + insignia.descricao + ',' : '') + ' esperando para jogar' });
   }
 }
 
