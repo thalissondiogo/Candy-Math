@@ -144,9 +144,17 @@ function registrarTrabalho(item) {
 
 // Anota acerto e erro por conteúdo. O resumo de Recordes usa esses números
 // para sugerir o que revisar — é estimativa a partir do que foi jogado aqui.
+//
+// Uma questão, um registro. Nos jogos em que a resposta certa continua na tela
+// até ser pega (chuva, balões, pescaria, ordenar, toupeira), cada tentativa
+// errada somava mais uma "feita": uma questão resolvida na quarta tentativa
+// virava 1 acerto em 4 no boletim. A régua agora é a do duelo: o primeiro
+// desfecho da questão é o que fica, e só é acerto se veio limpo.
+let registradoPara = null;
 function registrarResultado(acertou) {
   const nome = itemAtual && itemAtual.o;
-  if (!nome) return;
+  if (!nome || itemAtual === registradoPara) return;
+  registradoPara = itemAtual;
   const h = G.hist[nome] || (G.hist[nome] = { feitas: 0, certas: 0 });
   h.feitas++;
   if (acertou) { h.certas++; }
@@ -1854,7 +1862,9 @@ function dropHook() {
     });
 
     if (!alvo) {
-      perdeu();
+      // Anzol vazio é mira, não conta: nenhuma alternativa foi escolhida, então
+      // não entra no histórico nem quebra a sequência de acertos.
+      playSound('wrong');
       showFishFeedback('O anzol voltou vazio — mire em um peixe!');
     } else if (alvo.dataset.correct === 'true') {
       clearInterval(fishMov);

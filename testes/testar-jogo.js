@@ -542,6 +542,46 @@ async function main() {
   await avaliar(c, 'goHub()');
   await espera(400);
 
+  // ── 13b. na chuva, uma questão é um registro, por mais tentativas que leve ──
+  /* A resposta certa continua caindo até ser pega, então a criança pode errar
+     várias vezes na mesma questão. O histórico guarda o desfecho da questão (régua
+     do duelo: só é acerto se veio limpo), não cada tentativa. O movimento é parado
+     para o doce não colidir sozinho; quem decide são os mesmos tratadores que a
+     colisão chama. */
+  await avaliar(c, "startMode('catch')");
+  await espera(400);
+  if (await avaliar(c, "window.__J.aberto('modalTuto')")) await clicar(c, '#tutoAcoes', 'Começar a jogar');
+  confere('a chuva abre na tela dela', await esperarPor(c, "window.__J.tela()==='screenCatch' && !!G.currentQ"), await tela(c));
+  const pararChuva = "(function(){clearAllGameIntervals();catchEncerrado=true;"
+    + "document.querySelectorAll('.catch-item').forEach(function(e){e.remove();});return true;})()";
+  const fotoChuva = '(function(){var h=G.hist[G.currentQ.o]||{feitas:0,certas:0};'
+    + 'return {o:G.currentQ.o,feitas:h.feitas,certas:h.certas,stars:G.stars,acertos:G.totalCorrect,seq:G.streak};})()';
+  await avaliar(c, pararChuva);
+  const chuva0 = await avaliar(c, fotoChuva);
+  await avaliar(c, 'handleCatchFail(); handleCatchFail(); true');
+  const chuva1 = await avaliar(c, fotoChuva);
+  confere('dois doces errados na mesma questão contam um erro só',
+    chuva1.feitas === chuva0.feitas + 1 && chuva1.certas === chuva0.certas, { chuva0, chuva1 });
+  confere('errar na chuva zera a sequência', chuva1.seq === 0, chuva1);
+  await avaliar(c, 'handleCatchWin(); true');
+  const chuva2 = await avaliar(c, fotoChuva);
+  confere('pegar o certo depois de errar não vira acerto no histórico',
+    chuva2.feitas === chuva0.feitas + 1 && chuva2.certas === chuva0.certas, { chuva0, chuva2 });
+  confere('pegar o certo depois de errar ainda dá as estrelas do jogo', chuva2.stars - chuva0.stars === 20, { chuva0, chuva2 });
+  confere('pegar o certo conta nas respostas certas', chuva2.acertos === chuva0.acertos + 1, { chuva0, chuva2 });
+  confere('a chuva passa para a segunda questão',
+    await esperarPor(c, "window.__J.texto('catchProg')==='2/5'"), await texto(c, 'catchProg'));
+  await avaliar(c, pararChuva);
+  const chuva3 = await avaliar(c, fotoChuva);
+  await avaliar(c, 'handleCatchWin(); true');
+  const chuva4 = await avaliar(c, fotoChuva);
+  confere('acerto limpo na chuva entra uma vez no histórico',
+    chuva4.feitas === chuva3.feitas + 1 && chuva4.certas === chuva3.certas + 1, { chuva3, chuva4 });
+  await esperarPor(c, "window.__J.texto('catchProg')==='3/5'");
+  await avaliar(c, pararChuva);
+  await avaliar(c, 'goHub()');
+  await espera(400);
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);
