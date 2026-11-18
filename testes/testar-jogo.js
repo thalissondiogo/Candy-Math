@@ -764,6 +764,7 @@ async function main() {
   await espera(300);
   const botaoMedalhas = await avaliar(c, "window.__J.texto('recMedalhasConta')");
   confere('Recordes dizem quantas medalhas já foram ganhas', /^\d+ de 10$/.test(botaoMedalhas), botaoMedalhas);
+  await avaliar(c, "document.querySelector('#modalRecords .btn-medalhas').focus(); true");
   await clicar(c, '#modalRecords', 'Ver medalhas');
   await espera(400);
   const colecao = await avaliar(c, `(function(){
@@ -784,7 +785,14 @@ async function main() {
     colecao.bloqueadas.every((b) => /^Ainda não · /.test(b.sit) && b.cadeado && b.desc.length > 20), colecao.bloqueadas);
   confere('o resumo da coleção bate com o botão de Recordes', colecao.resumo === botaoMedalhas + ' medalhas', { resumo: colecao.resumo, botaoMedalhas });
   confere('o foco do teclado entra na coleção', colecao.foco);
-  await avaliar(c, "closeModal('modalConquistas'); closeModal('modalRecords'); true");
+  // Medalhas abre por cima de Recordes: fechar só ela devolve o foco ao botão
+  // que a abriu, e não ao <body> (o teclado perdia o lugar).
+  await avaliar(c, "document.querySelector('#modalConquistas .btn-close-modal').click(); true");
+  await espera(300);
+  const focoVolta = await avaliar(c, "({cls:document.activeElement.className, recordes:window.__J.aberto('modalRecords')})");
+  confere('fechar Medalhas devolve o foco ao botão Ver medalhas, com Recordes ainda aberto',
+    /btn-medalhas/.test(focoVolta.cls) && focoVolta.recordes, focoVolta);
+  await avaliar(c, "closeModal('modalRecords'); true");
 
   // ── 13g. a bandana evolui com as medalhas, uma vez, sem prêmio ──
   const ins1 = await avaliar(c, `(function(){

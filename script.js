@@ -566,6 +566,10 @@ function dialogoAberto() {
 }
 
 let focoAntesDoDialogo = null;
+// Diálogo aberto POR CIMA de outro (Recordes → Medalhas, Boletim → Apagar):
+// quem o abriu fica anotado por id, para o foco voltar a esse botão quando só
+// ele fechar. Sem isto o foco caía no <body> e o teclado perdia o lugar.
+const focoQueAbriu = {};
 
 function entrarNoDialogo(caixa) {
   const caixaInterna = caixa.querySelector('.modal-box');
@@ -2776,19 +2780,28 @@ function abrirModalDeVerdade(id) {
   // Quem abriu é anotado só no primeiro da pilha: fechar depois devolve a
   // pessoa ao botão que ela apertou, não ao meio da lista.
   if (!jaHavia) focoAntesDoDialogo = document.activeElement;
+  else focoQueAbriu[id] = document.activeElement;
   entrarNoDialogo($(id));
 }
 function closeModal(id) {
   $(id).style.display = 'none';
   if (id === 'modalShop') fimDaProva();
   const anyOpen = document.querySelectorAll('.modal[style*="display: block"], .modal[style*="display:block"]');
+  const quemAbriu = focoQueAbriu[id];
+  delete focoQueAbriu[id];
   if (!anyOpen.length) {
     $('modalOverlay').classList.remove('open');
     devolverFocoDoDialogo();
+    return;
   }
+  // Ainda há diálogo aberto: o foco volta ao botão que abriu este, se ele
+  // continua na tela; senão, entra no diálogo que ficou por cima.
+  if (quemAbriu && quemAbriu.isConnected && quemAbriu.getClientRects().length) quemAbriu.focus({ preventScroll: true });
+  else if (dialogoAberto()) entrarNoDialogo(dialogoAberto());
 }
 function closeAllModals() {
   document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+  Object.keys(focoQueAbriu).forEach((k) => { delete focoQueAbriu[k]; });
   fimDaProva();
   $('modalOverlay').classList.remove('open');
   devolverFocoDoDialogo();

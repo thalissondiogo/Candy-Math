@@ -669,3 +669,42 @@ decidir entre adiar `montarCliente` até a primeira ação que precise da nuvem
 `testes/testar-metas.js` confere isso. Entra na exportação de dados dos
 responsáveis (`CM_CONTAS.exportar` lê o save inteiro) e sai em "Apagar dados"
 (`apagarLocal`). Levar esses dados à nuvem exige uma análise própria antes.
+
+## E — Validação integrada da Fase 1 (missões, dias, medalhas, mascote)
+
+Feita em 18/11/2026, depois dos incrementos 1 a 5, com `npm test`, os testes de
+navegador (`testar-jogo`, `testar-contas`), as cinco variações do auditor de
+layout e roteiros avulsos em Chromium real (teclado, saves adulterados,
+evolução do mascote por uma rodada jogada com cliques).
+
+### E1 — Fechar um diálogo aberto por cima de outro deixava o foco no `<body>` (corrigido)
+
+Recordes → Ver medalhas → X: Recordes continuava aberto e `closeModal` só
+devolvia o foco quando o último diálogo fechava. O teclado perdia o lugar e o
+leitor de tela ficava sem referência. O defeito já existia na área dos
+responsáveis (Boletim → Apagar dados, Boletim → Conexão); a Fase 1 criou o
+primeiro empilhamento que a criança alcança. Correção em `script.js`: quem
+abriu cada diálogo sobreposto fica anotado (`focoQueAbriu`) e recebe o foco de
+volta; se ele sumiu, o foco entra no diálogo que ficou por cima.
+`testar-jogo` (seção 13f) confere e falha sem a correção.
+
+### E2 — No duelo local, as respostas dos dois jogadores contam para o perfil ativo (em aberto)
+
+`duelo.js:achou()` chama `registrarNoHistoria` para quem estiver na vez, e o
+histórico, as missões, a sequência de dias e as medalhas são do perfil ativo.
+O histórico e as estrelas já funcionavam assim antes da Fase 1 (decisão
+registrada em `duelo.js`: "o duelo também é estudo"); a Fase 1 herdou o efeito
+nas metas. Não há no duelo local um dado que diga qual assento é o estudante
+do perfil, então a correção pede decisão: (a) só o assento 1 conta para o
+perfil; (b) o duelo não alimenta metas; (c) manter. Proposto para a Fase 3,
+que já prevê mexer no duelo.
+
+### E3 — Medições que sustentam o equilíbrio
+
+Simulação com o `metas.js` real, 14 dias, 80% de acerto: as metas (missões e
+marcos de dias) pagam 370 estrelas com 1 rodada por dia e param em 640 a
+partir de 3 rodadas por dia; com 24 rodadas por dia continuam 640. Jogar mais
+não rende meta nenhuma a mais. Medalhas: 305 estrelas na vida do perfil.
+Saves adulterados (metas texto, lista, nulo; medalhas forjadas; missões pagas
+de outro dia; dias futuros; recorde absurdo; marco sem dias; histórico torto)
+abrem sem erro, sem pagamento indevido e no lenço azul.
