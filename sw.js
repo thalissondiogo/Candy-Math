@@ -24,12 +24,12 @@
    =================================================== */
 'use strict';
 
-const VERSAO = 'candymath-v2';
+const VERSAO = 'candymath-v3';
 
 // A página fica sob './' (a hospedagem usa URLs limpas: /index.html vira /).
 const ESTATICOS = [
   './', 'style.css', 'script.js', 'conteudo.js', 'banco-itens.js', 'guarda-roupa.js', 'mascote.js',
-  'metas.js', 'contas.js', 'privacidade.js', 'como-jogar.js', 'avaliacao.js', 'duelo.js', 'config.js',
+  'metas.js', 'pedagogia.js', 'contas.js', 'privacidade.js', 'como-jogar.js', 'avaliacao.js', 'duelo.js', 'config.js',
   'narracao.js', 'nuvem.js', 'favicon.png', 'favicon.svg', 'manifest.json', 'icon-192.png', 'icon-512.png',
 ];
 

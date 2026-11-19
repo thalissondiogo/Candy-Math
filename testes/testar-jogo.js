@@ -245,6 +245,12 @@ async function main() {
     (await avaliar(c, `JSON.stringify(G.hist[${JSON.stringify(conteudo1)}])`)) === '{"feitas":1,"certas":1}',
     await avaliar(c, `G.hist[${JSON.stringify(conteudo1)}]`));
   confere('acerto é gravado na hora', (await avaliar(c, 'window.__J.save().stars')) === depois.stars);
+  const ev1 = await avaliar(c, `(function(){ var e=G.evidencias, l=CM_PEDAGOGIA.evidencias(e).filter(function(x){return x.n===e.n;});
+    return { l:l, bncc:G.currentQ.bncc, hoje:CM_PEDAGOGIA.diaTexto(CM_PEDAGOGIA.diaNumero(Date.now())), salvo:window.__J.save().evidencias }; })()`);
+  confere('o acerto vira evidência em cada habilidade BNCC da questão, sem ajuda, no quiz, com a data de hoje',
+    ev1.l.length === ev1.bncc.length && ev1.l.length > 0 && ev1.l.every((x) => x.resultado === 'acerto' && !x.ajuda && x.jogo === 'quiz' &&
+      x.conteudo === conteudo1 && x.data === ev1.hoje && ev1.bncc.indexOf(x.habilidade) >= 0), ev1);
+  confere('a evidência é gravada no save na hora', JSON.stringify(ev1.salvo) === JSON.stringify(await avaliar(c, 'G.evidencias')));
   confere('acerto entra na lista de conteúdos praticados', (await avaliar(c, 'G.aprendidas.indexOf(' + JSON.stringify(conteudo1) + ')')) >= 0);
   confere('resumo da rodada ainda não abriu', !(await avaliar(c, "window.__J.aberto('modalLevelUp')")));
   confere('passou para a segunda pergunta', await esperaQuiz(2));
@@ -298,6 +304,10 @@ async function main() {
     histDepois.feitas === JSON.parse(histAntes).feitas + 1 && histDepois.certas === JSON.parse(histAntes).certas,
     { histAntes, histDepois });
   confere('a bolinha da questão vira erro', /wrong/.test(await avaliar(c, 'window.__J.bolinha(1)')), await avaliar(c, 'window.__J.bolinha(1)'));
+  const ev2 = await avaliar(c, "(function(){ var e=G.evidencias; return CM_PEDAGOGIA.evidencias(e).filter(function(x){return x.n===e.n;}); })()");
+  confere('o erro depois da pista vira evidência de erro com ajuda, uma por habilidade, uma vez só',
+    ev2.length > 0 && ev2.every((x) => x.resultado === 'erro' && x.ajuda === true && x.conteudo === q2.o) &&
+    (await avaliar(c, 'G.evidencias.n')) === (await avaliar(c, 'Object.keys(G.hist).reduce(function(t,k){return t+G.hist[k].feitas;},0)')), ev2);
   const reforco = await avaliar(c, 'filaQuiz.length');
   if (reforco) {
     confere('a consolidação é do mesmo conteúdo, com outros números',
@@ -641,6 +651,12 @@ async function main() {
   confere('as metas são gravadas no save do estudante', JSON.stringify(metas.salvo) === JSON.stringify(metas.m),
     { salvo: metas.salvo, memoria: metas.m });
   confere('o histórico continua no formato { feitas, certas }', metas.formatoHist);
+  const evid = await avaliar(c, `(function(){ var l=CM_PEDAGOGIA.evidencias(G.evidencias), ns={}, ok=0, chuva=0;
+    l.forEach(function(x){ if(!ns[x.n]){ ns[x.n]=1; if(x.resultado==='acerto') ok++; } if(x.jogo==='catch') chuva++; });
+    return { respostas:Object.keys(ns).length, acertos:ok, n:G.evidencias.n, chuva:chuva }; })()`);
+  confere('cada desfecho do histórico entrou uma vez nas evidências, com os mesmos acertos',
+    evid.respostas === metas.feitas && evid.n === metas.feitas && evid.acertos === metas.certas, { evid, hist: [metas.feitas, metas.certas] });
+  confere('as respostas da chuva entram como evidência do jogo da chuva', evid.chuva >= 2, evid);
 
   // ── 13d. sequência de dias: hub, Recordes e marco de 3 dias ──
   /* Hoje já contou (as rodadas acima). A ficha do hub aparece no celular, os
@@ -1184,7 +1200,7 @@ async function main() {
   await espera(300);
   const guardado = await avaliar(c, `({chave:CM_CONTAS.chaveDoSave(),stars:G.stars,ano:G.ano,nivel:G.nivel,
     acertos:G.totalCorrect,owned:G.owned.slice().sort(),equip:G.equip,seq:G.bestStreak,hist:Object.keys(G.hist).length,
-    metas:JSON.stringify(G.metas), conquistas:JSON.stringify(G.metas.conquistas)})`);
+    metas:JSON.stringify(G.metas), conquistas:JSON.stringify(G.metas.conquistas), evid:JSON.stringify(G.evidencias)})`);
   confere('o save do convidado fica na chave sem perfil', guardado.chave === 'candymath_v3', guardado.chave);
   confere('as duas peças estão vestidas antes de recarregar',
     guardado.equip[slotBarato] === barato && guardado.equip.glasses === oculos, guardado.equip);
@@ -1204,6 +1220,8 @@ async function main() {
   confere('a melhor sequência volta', voltou.seq === guardado.seq);
   confere('o histórico por conteúdo volta inteiro', voltou.hist === guardado.hist && voltou.hist > 0, voltou);
   confere('as metas do dia e a lista de dias voltam iguais', voltou.metas === guardado.metas, { guardado: guardado.metas, voltou: voltou.metas });
+  confere('as evidências voltam iguais depois de recarregar',
+    (await avaliar(c, 'JSON.stringify(G.evidencias)')) === guardado.evid && JSON.parse(guardado.evid).n > 0, guardado.evid.length);
   confere('o mascote escolhido volta depois de recarregar', await avaliar(c, "G.mascote === 'capivara' && document.getElementById('oncaDisplay').innerHTML.indexOf('#B07A4A') >= 0"));
   confere('as opções de leitura, cor e voz voltam depois de recarregar',
     await avaliar(c, "document.body.classList.contains('pref-contraste') && document.body.classList.contains('pref-daltonismo') && document.body.classList.contains('pref-dislexia') && CM_NARRACAO.velocidade() === 1.25"));
@@ -1253,6 +1271,8 @@ async function main() {
   confere('apagar zera as metas na memória',
     apagado.m.dias.length === 0 && apagado.m.dia.respostas === 0 && apagado.m.semana.rodadas === 0, apagado.m);
   confere('apagar zera as metas gravadas', !!apagado.s && apagado.s.dias.length === 0 && apagado.s.dia.respostas === 0, apagado.s);
+  confere('apagar zera as evidências na memória e no save',
+    await avaliar(c, "G.evidencias.n===0 && Object.keys(G.evidencias.h).length===0 && window.__J.save().evidencias.n===0"));
 
   // ── 14c. um save de antes das metas abre inteiro ──
   /* Quem já jogava tem um save sem o campo metas. Ele tem de abrir com o
@@ -1271,6 +1291,10 @@ async function main() {
   confere('save sem metas começa as metas do zero, no dia de hoje',
     antigo.m.dias.length === 0 && antigo.m.dia.respostas === 0 && antigo.m.dia.chave === antigo.hoje, antigo.m);
   confere('save sem metas não é tratado como danificado', antigo.danificado === null);
+  confere('save sem evidências começa com elas vazias e o histórico antigo não vira evidência',
+    await avaliar(c, "G.evidencias.n===0 && Object.keys(G.evidencias.h).length===0 && G.hist['Frações'].feitas===6"));
+  confere('o histórico antigo aparece só como legado, insuficiente para domínio',
+    await avaliar(c, "(function(){var r=CM_PEDAGOGIA.resumoLegado(G.hist); return r.fonte==='legado' && r.suficienteParaDominio===false && r.conteudos['Frações'].feitas===6;})()"));
   confere('save sem metas abre com o lenço azul de sempre',
     await avaliar(c, "CM_METAS.insignia(G.metas).estagio===1 && /só de pelo e bandana azul|^Juba Candy vestindo/.test(document.querySelector('#oncaDisplay svg').getAttribute('aria-label'))"));
 
@@ -1295,6 +1319,38 @@ async function main() {
   await avaliar(c, dentro);
   confere('na abertura seguinte não há aviso de novo',
     !(await avaliar(c, "/bandana/i.test(window.__J.aviso().join(' '))")) && (await avaliar(c, 'CM_METAS.insignia(G.metas).estagio')) === 2);
+
+  // ── 14e. evidências: ajuda é a pista do jogo, nunca a acessibilidade ──
+  /* Acertar depois da pista é acerto COM ajuda. Com narração, modo calmo,
+     contraste e fonte para dislexia ligados, um acerto direto continua SEM
+     ajuda: recurso de acessibilidade não é atalho para a resposta. */
+  await avaliar(c, "G.comoJogarVisto.quiz=true; G.prefs.calmo=true; G.prefs.contraste=true; G.prefs.dislexia=true; aplicarPreferencias(); startMode('quiz'); true");
+  confere('o quiz abre para conferir a ajuda', await esperaQuiz(1));
+  await avaliar(c, 'window.__J.responder(false)');
+  await espera(200);
+  await avaliar(c, 'window.__J.responder(true)');
+  await espera(200);
+  const comPista = await avaliar(c, "(function(){ var e=G.evidencias; return CM_PEDAGOGIA.evidencias(e).filter(function(x){return x.n===e.n;}); })()");
+  confere('acertar depois da pista vira acerto com ajuda', comPista.length > 0 && comPista.every((x) => x.resultado === 'acerto' && x.ajuda === true), comPista);
+  confere('a próxima questão do quiz abre', await esperaQuiz(2));
+  await avaliar(c, 'window.__J.responder(true)');
+  await espera(200);
+  const acess = await avaliar(c, "(function(){ var e=G.evidencias; return CM_PEDAGOGIA.evidencias(e).filter(function(x){return x.n===e.n;}); })()");
+  confere('com recursos de acessibilidade ligados, o acerto direto fica sem ajuda',
+    acess.length > 0 && acess.every((x) => x.resultado === 'acerto' && x.ajuda === false), acess);
+  await avaliar(c, "clearAllGameIntervals(); G.prefs.calmo=false; G.prefs.contraste=false; G.prefs.dislexia=false; aplicarPreferencias(); goHub(); true");
+  await espera(300);
+  // Save com evidências adulteradas: abre, descarta só o que não confere e não acusa dano.
+  await avaliar(c, `(function(){ var d=new Date(), hoje=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000);
+    localStorage.setItem('candymath_v3', JSON.stringify({stars:10, ano:3, nivel:1, hist:{}, equip:{}, owned:[], comoJogarVisto:{quiz:true},
+    evidencias:{ v:1, n:3, t:{ c:['Adição','<img src=x onerror=alert(1)>'], x:['banco'], j:['quiz'] },
+      h:{ EF03MA05:[[1,hoje,1,0,0,0],[1,hoje,0,0,0,0],[2,hoje+90,1,0,0,0],[3,hoje,1,0,1,0]], 'EF99XX':[[4,hoje,1,0,0,0]] } } })); return true; })()`);
+  await abrir(c, 390, 844, BASE);
+  await espera(600);
+  await avaliar(c, dentro);
+  const adult = await avaliar(c, "({ l:CM_PEDAGOGIA.evidencias(G.evidencias), dano:localStorage.getItem('candymath_v3_danificado'), stars:G.stars })");
+  confere('save com evidências adulteradas abre, fica só o registro válido e não acusa dano',
+    adult.l.length === 1 && adult.l[0].n === 1 && adult.l[0].conteudo === 'Adição' && adult.dano === null && adult.stars === 10, adult);
 
   // ── 15. nenhum erro de console no percurso ──
   const gritos = c.eventos.filter((e) =>

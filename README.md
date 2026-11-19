@@ -60,6 +60,7 @@ banco-itens.js        banco autoral: 311 situações escritas + 96 afirmações 
 guarda-roupa.js       catálogo da loja: 79 peças, preços, abas e conjuntos
 mascote.js            Juba Candy em SVG: desenho por peça, recortes, figurino e insígnia da bandana (estágios 1 a 4)
 metas.js              contagem por dia e semana (missões, dias de atividade, conquistas), só no aparelho
+pedagogia.js          habilidades BNCC, grafo de pré-requisitos (proposta não validada) e evidências por resposta, só no aparelho
 contas.js             conta de quem acompanha, perfis de estudante, PIN e porta do adulto
 privacidade.js        autorização por finalidade: o que pode sair, para onde, e a revogação
 como-jogar.js         explicação de regras que entra antes da primeira partida de cada jogo
@@ -658,6 +659,7 @@ npm run jogo     # uma partida completa, a loja e o figurino, clicando nos botõ
 | `node testes/testar-autorizacao.js` | A0: o interruptor do duelo é lido antes de cada chamada de rede. A parte remota pede três contas de teste em `.env` e, sem elas, se declara **não executada** |
 | `node testes/testar-narracao.js` | a função de voz com `fetch` e `env` falsos: validação, limite, upstream, o cache de áudio no Supabase (procura, acerto, gravação, poda e as quedas do banco), a recusa sem autorização e a revogação no meio da partida — e um aviso na primeira linha de que é simulado |
 | `node testes/testar-metas.js` | a contagem de `metas.js` sem navegador: dia e semana no fuso do aparelho, viradas com o jogo aberto, placar por unidade temática, sequência de dias e marcos, missões (só acerto conta, pagamento único, sorteio estável por data), medalhas (domínio por conteúdo, degrau subido pelo jogo, reforço, prova sem estrela), insígnia da bandana (limites 2/5/8, aviso único, nunca regride), storage hostil e a ausência das metas no pacote da nuvem |
+| `node testes/testar-pedagogia.js` | o modelo de `pedagogia.js` sem navegador: grafo de pré-requisitos (cobre os temas, sem ciclo, coerente com os anos de `CM.COD`), relação muitos-para-muitos habilidade↔conteúdo tirada do próprio conteúdo, registro de evidências (data local, acerto, ajuda, tipo, jogo), repetidos, tetos de armazenamento, isolamento entre perfis, saves antigos e adulterados, histórico antigo só como legado e a ausência das evidências no pacote da nuvem |
 | `node testes/testar-desafio.js` | o desafio por código do duelo: ida e volta do código para todo ano e nível, recusa de código errado, mesmas perguntas para o mesmo código, `Math.random` intacto depois do sorteio e código sem dado pessoal |
 | `node testes/testar-mascote.js` | as 79 peças: catálogo, desenho de cada uma, vitrine, exclusividade por categoria e a página de pré-visualização; a insígnia da bandana nos quatro estágios (SVG seguro, camada entre bandana e cabeça, estágio 1 idêntico ao desenho original por SHA-256) |
 | `node testes/validar-banco.js` | os 311 itens e as 96 afirmações: id único, 4 alternativas sem repetição (por valor, não por texto), `valor` batendo com a resposta, unidade válida, código BNCC na lista oficial (`testes/bncc-matematica.txt`) |

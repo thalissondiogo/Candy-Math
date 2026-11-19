@@ -205,7 +205,8 @@ async function main() {
   // ── 4. escolher Téo: progresso zerado, nada da Manu ──
   // Há metas na memória de quem jogou antes; o Téo ainda não tem save, então é a
   // troca de estudante — não a leitura do save — que tem de zerá-las.
-  await avaliar(c, "CM_METAS.registrarResposta(G.metas,{u:'numeros',acertou:true},Date.now());true");
+  await avaliar(c, "CM_METAS.registrarResposta(G.metas,{u:'numeros',acertou:true},Date.now());"
+    + "CM_PEDAGOGIA.registrar(G.evidencias,{item:{o:'Contagem',bncc:['EF01MA01']},acertou:true,jogo:'quiz'},Date.now());true");
   await clicar(c, '#entradaCorpo', 'Téo');
   await esperarPor(c, "window.__T.tela()==='screenHub'", 40000);
   confere('escolher perfil leva ao hub', (await tela(c)) === 'screenHub', await tela(c));
@@ -214,6 +215,9 @@ async function main() {
   const metasNovo = await avaliar(c, 'G.metas');
   confere('perfil novo começa sem as metas de quem jogou antes',
     metasNovo.dia.respostas === 0 && metasNovo.dias.length === 0, metasNovo);
+  const evidNovo = await avaliar(c, 'G.evidencias');
+  confere('perfil novo começa sem as evidências de quem jogou antes',
+    evidNovo.n === 0 && Object.keys(evidNovo.h).length === 0, evidNovo);
   confere('ano do perfil aplicado ao jogo', teo.ano === 7, teo);
   confere('save do jogo aponta para a chave do perfil', teo.chave === 'candymath_v3#' + idTeo, teo);
   confere('barra mostra quem joga', teo.barra === 'Téo · 7º ano' && teo.acao === 'Trocar', teo);
@@ -224,8 +228,14 @@ async function main() {
   confere('progresso da Manu intacto', (await avaliar(c, `(window.__T.save('candymath_v3#${idManu}')||{}).stars`)) === 640);
   // As metas (dias de atividade, contagem do dia) seguem a mesma chave do perfil.
   // A questão passa pelo caminho do jogo: registrarTrabalho e registrarResultado.
-  await avaliar(c, "registrarTrabalho({o:'Teste de metas',u:'numeros'});registrarResultado(true);"
-    + "registrarTrabalho({o:'Teste de metas',u:'numeros'});registrarResultado(false);saveState();true");
+  await avaliar(c, "registrarTrabalho({o:'Teste de metas',u:'numeros',bncc:['EF07MA01']});registrarResultado(true);"
+    + "registrarTrabalho({o:'Teste de metas',u:'numeros',bncc:['EF07MA01']});registrarResultado(false);saveState();true");
+  const evidTeo = await avaliar(c, `(window.__T.save('candymath_v3#${idTeo}')||{}).evidencias`);
+  confere('as evidências do Téo vão para a chave dele',
+    !!evidTeo && evidTeo.n === 2 && evidTeo.h.EF07MA01 && evidTeo.h.EF07MA01.length === 2, evidTeo);
+  const evidManuAntes = await avaliar(c, `(window.__T.save('candymath_v3#${idManu}')||{}).evidencias`);
+  confere('as evidências da Manu não recebem as respostas do Téo',
+    !evidManuAntes || !evidManuAntes.h.EF07MA01, evidManuAntes);
   const metasTeo = await avaliar(c, `(window.__T.save('candymath_v3#${idTeo}')||{}).metas`);
   confere('as metas do Téo vão para a chave dele',
     !!metasTeo && metasTeo.dia.respostas === 2 && metasTeo.dia.acertos === 1 && metasTeo.dias.length === 0, metasTeo);
@@ -287,6 +297,7 @@ async function main() {
   const metasManu = await avaliar(c, 'G.metas');
   confere('Manu entra com as próprias metas, sem os dias do Téo',
     metasManu.dia.respostas === 0 && metasManu.semana.respostas === 0 && metasManu.dias.length === 0, metasManu);
+  confere('Manu entra sem as evidências do Téo', await avaliar(c, '!G.evidencias.h.EF07MA01'));
   const bandanaManu = await avaliar(c, `({ estagio:CM_METAS.insignia(G.metas).estagio,
     hub:document.querySelector('#oncaDisplay svg').getAttribute('aria-label'),
     chave:document.getElementById('oncaDisplay').dataset.figurino })`);

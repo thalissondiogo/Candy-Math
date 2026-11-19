@@ -602,7 +602,7 @@ function limparBrilho() {
 // uma tacada errada.
 function registrarNoHistoria(conta, limpo) {
   if (!conta || !tem('registrarTrabalho')) return;
-  root.registrarTrabalho({ o: conta.o, u: conta.u, bncc: conta.bncc, txt: conta.txt, ref: conta.ref });
+  root.registrarTrabalho({ o: conta.o, u: conta.u, tema: conta.tema, bncc: conta.bncc, txt: conta.txt, ref: conta.ref });
   if (tem('registrarResultado')) root.registrarResultado(!!limpo);
 }
 

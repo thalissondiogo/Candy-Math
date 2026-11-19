@@ -30,7 +30,7 @@
       ]
     },
     {
-      "source": "/(conteudo|banco-itens|guarda-roupa|mascote|contas|privacidade|como-jogar|avaliacao|duelo|nuvem|narracao|config|script|metas).js",
+      "source": "/(conteudo|banco-itens|guarda-roupa|mascote|contas|privacidade|como-jogar|avaliacao|duelo|nuvem|narracao|config|script|metas|pedagogia).js",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {

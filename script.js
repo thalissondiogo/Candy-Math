@@ -42,6 +42,9 @@ const G = {
   // Contagem por dia e por semana para missões, dias de atividade e
   // conquistas (metas.js). Fica separada de hist e só no aparelho.
   metas: window.CM_METAS.vazio(),
+  // Evidências por habilidade BNCC (pedagogia.js): o que foi respondido, em
+  // que dia, com ou sem ajuda do jogo. Separado de hist e só no aparelho.
+  evidencias: window.CM_PEDAGOGIA.vazio(),
   // Preferências deste estudante (Ajustes): ritmo, leitura, cores, narração e
   // dificuldade por jogo. Ficam no save do perfil, nunca no aparelho todo.
   prefs: null,
@@ -223,10 +226,15 @@ function proximaAfirmacao() {
 // Guarda os objetos de conhecimento praticados: G.trabalhados é da rodada
 // (aparece no resumo) e G.aprendidas é o histórico, mostrado nos Recordes.
 let itemAtual = null;   // conteúdo em jogo neste momento
+// A questão em jogo recebeu ajuda do próprio jogo (pista ou desenho)? Vai para
+// a evidência. Narração, modo calmo e demais recursos de acessibilidade não
+// contam: não entregam a resposta.
+let ajudaNoItem = false;
 
 function registrarTrabalho(item) {
   if (!item || !item.o) return;
   itemAtual = item;
+  ajudaNoItem = false;
   if (G.trabalhados.indexOf(item.o) < 0) G.trabalhados.push(item.o);
   if (G.aprendidas.indexOf(item.o) < 0) { G.aprendidas.push(item.o); saveState(); }
 }
@@ -250,6 +258,8 @@ function registrarResultado(acertou) {
   CM_METAS.registrarResposta(G.metas, { u: itemAtual.u, acertou: acertou }, Date.now());
   // Revisão espaçada: erro agenda o conteúdo; acerto na hora afasta a próxima.
   CM_METAS.registrarRevisao(G.metas, nome, itemAtual.u, acertou, Date.now());
+  CM_PEDAGOGIA.registrar(G.evidencias,
+    { item: itemAtual, acertou: acertou, ajuda: ajudaNoItem, jogo: G.currentMode }, Date.now());
   premiarMetas();
 }
 
@@ -1237,6 +1247,7 @@ function trocarEstudante(perfil) {
     provas: [], comoJogarVisto: {}, desde: Date.now(),
     codigoVinculo: '', apelidoCrianca: perfil ? perfil.apelido : '',
     metas: CM_METAS.vazio(),
+    evidencias: CM_PEDAGOGIA.vazio(),
     prefs: prefsVazias(),
     familia: familiaVazia(),
     mascote: 'onca',
@@ -1724,6 +1735,7 @@ function handleQuizAnswer(chosen, correct, btn) {
     // Primeira erro: a onça dá uma pista e a criança tenta de novo,
     // sem perder a estrela nem encerrar a questão.
     if (quizTentativas === 1) {
+      ajudaNoItem = true;
       showQuizFeedback(pistaDaPergunta(G.currentQ));
       return;
     }
@@ -1733,6 +1745,7 @@ function handleQuizAnswer(chosen, correct, btn) {
     // cabe num desenho de doces.
     const visual = G.currentQ && G.currentQ.visual;
     if (quizTentativas === 2 && visual) {
+      ajudaNoItem = true;
       mostrarVisual(visual);
       showQuizFeedback('Olhe o desenho: ' + legendaDoVisual(visual) + ' Com isso em mãos, escolha de novo.');
       return;
@@ -3029,6 +3042,7 @@ function checkRoul(valor) {
 
   // Primeira errada do giro: pista e nova chance, sem perder o prêmio.
   if (roulTentativas === 1) {
+    ajudaNoItem = true;
     showRoulFeedback(pistaDaPergunta(G.currentQ));
     return;
   }
@@ -3696,6 +3710,7 @@ function apagarLocal(semAviso) {
   G.codigoVinculo = '';
   G.apelidoCrianca = '';
   G.metas = CM_METAS.vazio();
+  G.evidencias = CM_PEDAGOGIA.vazio();
   G.prefs = prefsVazias();
   G.familia = familiaVazia();
   G.mascote = 'onca';
@@ -3994,6 +4009,7 @@ function gravarLocal() {
       codigoVinculo: G.codigoVinculo,
       apelidoCrianca: G.apelidoCrianca,
       metas:        G.metas,
+      evidencias:   G.evidencias,
       prefs:        G.prefs,
       familia:      G.familia,
       mascote:      G.mascote,
@@ -4137,6 +4153,9 @@ function loadState() {
   G.apelidoCrianca  = typeof d.apelidoCrianca === 'string' ? d.apelidoCrianca.replace(/[<>]/g, '').slice(0, 30) : '';
   // Save de antes das metas não tem o campo: começa vazio, sem tocar no resto.
   G.metas           = CM_METAS.sanitizar(d.metas, Date.now());
+  // Save de antes das evidências também começa vazio; G.hist fica intacto e
+  // nunca é convertido em evidência (não tem data nem ajuda).
+  G.evidencias      = CM_PEDAGOGIA.sanitizar(d.evidencias, Date.now());
   G.prefs           = prefsSanit(d.prefs);
   G.familia         = familiaSanit(d.familia);
   G.mascote         = MASCOTE.especieValida(d.mascote);

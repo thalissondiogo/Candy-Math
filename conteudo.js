@@ -422,7 +422,7 @@ function escalaMax(ano, nv) {
 }
 
 function info(ano, nv, u, o, tema, txt) {
-  return { ano: clampAno(ano), nv: clampNv(nv), u: u, o: o, bncc: cod(tema, ano), txt: txt };
+  return { ano: clampAno(ano), nv: clampNv(nv), u: u, o: o, tema: tema, bncc: cod(tema, ano), txt: txt };
 }
 
 // ── geradores ────────────────────────────────────────────
@@ -1837,7 +1837,7 @@ function afirmacao(ano, nv, usadas) {
     u: g.u,
     unidade: UNIDADES[g.u],
     o: g.o,
-    bncc: cod(g.tema, ano),
+    tema: g.tema, bncc: cod(g.tema, ano),
     txt: g.txt,
     certa: g.certa,
     explicacao: g.por,
@@ -1929,7 +1929,7 @@ function sequencia(ano, nv) {
       tipo: 'sequencia',
       seq: seq.map(texto), resposta: texto(resposta),
       erradas: erradas.map(texto), regra, ano, nv,
-      o: 'Sequência de frações com mesmo denominador', bncc: cod('frac', ano), unidade: UNIDADES.numeros
+      o: 'Sequência de frações com mesmo denominador', tema: 'frac', bncc: cod('frac', ano), unidade: UNIDADES.numeros
     };
   }
 
@@ -1953,7 +1953,7 @@ function sequencia(ano, nv) {
     tipo: 'sequencia',
     seq: seq.map(texto), resposta: texto(resposta),
     erradas: erradas.map(texto), regra, ano, nv,
-    o: 'Sequências numéricas e regularidade', bncc: cod('seq', ano), unidade: UNIDADES.numeros
+    o: 'Sequências numéricas e regularidade', tema: 'seq', bncc: cod('seq', ano), unidade: UNIDADES.numeros
   };
 }
 
@@ -2002,7 +2002,7 @@ function ordenar(ano, nv) {
       : tipo === 'porct' ? 'Comparação de porcentagens'
       : tipo === 'dec' || tipo === 'frac' ? 'Comparação e ordenação de números racionais'
       : 'Comparação e ordenação de números naturais',
-    bncc: tipo === 'neg' ? cod('neg', ano) : cod('ordem', ano),
+    tema: tipo === 'neg' ? 'neg' : 'ordem', bncc: tipo === 'neg' ? cod('neg', ano) : cod('ordem', ano),
     unidade: UNIDADES.numeros
   };
 }
@@ -2043,7 +2043,7 @@ function memoria(ano, nv) {
     vistos.push(v);
     pares.push({ expressao: (v + 1) + ' - 1', valor: fmt.num(v, 2), v: v });
   }
-  return { tipo: 'memoria', pares, ano, nv, o: ano <= 5 ? 'Fatos básicos e cálculo mental' : 'Cálculo mental com as quatro operações', bncc: cod('memoria', ano), unidade: UNIDADES.numeros };
+  return { tipo: 'memoria', pares, ano, nv, o: ano <= 5 ? 'Fatos básicos e cálculo mental' : 'Cálculo mental com as quatro operações', tema: 'memoria', bncc: cod('memoria', ano), unidade: UNIDADES.numeros };
 }
 
 // ── Cruzadinha: grade gerada com somas sempre coerentes ───
@@ -2076,7 +2076,7 @@ function cruzadinha(ano, nv) {
   return {
     tipo: 'cruzadinha', size: tamanho, grid, rowSums, colSums, respostas,
     lacunas: Object.keys(respostas).length, ano, nv,
-    o: 'Adição e igualdade em grade numérica', bncc: cod('cruz', ano), unidade: UNIDADES.numeros
+    o: 'Adição e igualdade em grade numérica', tema: 'cruz', bncc: cod('cruz', ano), unidade: UNIDADES.numeros
   };
 }
 
@@ -2118,7 +2118,7 @@ function balanca(ano, nv) {
     alternativas: [fmt.num(certa, 1)].concat(embaralhar(unicas.slice(0, 3).map((v) => fmt.num(v, 1)))),
     ano, nv,
     o: modo === 2 ? 'Equação do 1º grau' : 'Relação de igualdade com termo desconhecido',
-    bncc: cod(tema, ano), unidade: UNIDADES.algebra
+    tema: tema, bncc: cod(tema, ano), unidade: UNIDADES.algebra
   };
 }
 
