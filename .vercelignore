@@ -1,0 +1,30 @@
+# O que NÃO vai para a Vercel. O site publicado é só o jogo: páginas,
+# scripts, estilo, ícones, manifesto, service worker e a função de voz (api/).
+# Testes, SQL do banco, documentos internos e backups ficam fora do endereço
+# público (ver SEGURANCA.md, item 11).
+
+# Segredos locais
+.env
+.env.*
+
+# Backups e pacotes de exportação (nunca publicar)
+exportacao/
+
+# Testes, capturas e índices de apoio
+testes/
+
+# Esquema e migrações do Supabase: aplicados no painel do banco, não no site
+supabase/
+
+# Documentos internos (o README também fica de fora; privacidade.html e
+# cookies.html são as páginas públicas e continuam publicadas)
+*.md
+
+# Lixo de editor e de sistema
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
