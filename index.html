@@ -11,20 +11,22 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="theme-color" content="#9B5DE5">
-  <!-- Os três domínios de fora aparecem no `<head>` e o navegador só descobre
+  <!-- Os domínios de fora aparecem no `<head>` e o navegador só descobre
        o que eles realmente servem depois de baixar o CSS deles: as fontes
-       moram em `fonts.gstatic.com`, não em `fonts.googleapis.com`, e os
-       `.woff2` do Font Awesome idem. `preconnect` abre o TLS dos três antes, e
-       o `cdn.jsdelivr.net` é o do supabase-js, que o jogo pede em seguida.
+       moram em `fonts.gstatic.com`, não em `fonts.googleapis.com`.
+       `preconnect` abre o TLS antes, e o `cdn.jsdelivr.net` é o do
+       supabase-js, que o jogo pede em seguida. Os ícones (Font Awesome 6.5.0,
+       só o estilo solid) moram no próprio site, em fontawesome/: aparecem sem
+       internet e em redes que bloqueiam CDN.
        Não é superstição: sem isto, cada um desses arquivos paga um handshake
        no meio do caminho crítico até o primeiro pixel. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="dns-prefetch" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="fontawesome/css/fontawesome.min.css">
+  <link rel="stylesheet" href="fontawesome/css/solid.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>

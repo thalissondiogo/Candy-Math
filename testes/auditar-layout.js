@@ -30,11 +30,13 @@ const path = require('path');
 const { criarNavegador, conectar, avaliar, espera } = require('./_navegador.js');
 
 const PORTA = 9333;
-const BASE = 'http://127.0.0.1:8765/index.html';
+// CM_BASE aponta para outro endereço (ex.: o site publicado): CM_BASE=https://exemplo.vercel.app
+const RAIZ_URL = (process.env.CM_BASE || 'http://127.0.0.1:8765').replace(/\/+$/, '');
+const BASE = RAIZ_URL + (process.env.CM_BASE ? '/' : '/index.html');
 const PAGINAS = [
-  ['privacidade', 'http://127.0.0.1:8765/privacidade.html',
+  ['privacidade', RAIZ_URL + '/privacidade.html',
     [[320, 640], [390, 844], [768, 1024], [1440, 900]]],
-  ['cookies', 'http://127.0.0.1:8765/cookies.html',
+  ['cookies', RAIZ_URL + '/cookies.html',
     [[320, 640], [390, 844], [768, 1024], [1440, 900]]],
 ];
 const MEDIDAS = [
@@ -604,14 +606,17 @@ async function abrirPagina(c, largura, altura, movimento, endereco) {
   // readyState 'complete' sozinho engana: ainda vale para o about:blank anterior,
   // e aí a leitura de localStorage cai com SecurityError. Espera o documento ser
   // o do servidor.
-  for (let i = 0; i < 120; i++) {
-    const pronto = await avaliar(c, "(document.readyState==='complete'&&location.hostname==='127.0.0.1')||''");
+  const hostAlvo = new URL(endereco || BASE).hostname;
+  // Endereço publicado (CM_BASE) passa pela internet: espera até 40 s.
+  const voltas = hostAlvo === '127.0.0.1' ? 120 : 400;
+  for (let i = 0; i < voltas; i++) {
+    const pronto = await avaliar(c, "(document.readyState==='complete'&&location.hostname===" + JSON.stringify(hostAlvo) + ")||''");
     if (pronto) break;
     await espera(100);
   }
   const dominio = await avaliar(c, 'location.hostname');
-  if (dominio !== '127.0.0.1') {
-    throw new Error('a página não carregou em 12 s (host: ' + (dominio || 'about:blank') +
+  if (dominio !== hostAlvo) {
+    throw new Error('a página não carregou em ' + (voltas / 10) + ' s (host: ' + (dominio || 'about:blank') +
       ') — o servidor de arquivos da porta 8765 está de pé?');
   }
   // privacidade.html é página estática: não tem script.js, logo não há G para

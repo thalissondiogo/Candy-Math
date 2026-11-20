@@ -146,15 +146,18 @@ async function abrir(c, largura, altura, endereco) {
   await c.chamar('Emulation.setEmulatedMedia', {
     features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
   });
+  const hostAlvo = new URL(endereco).hostname;
   await c.chamar('Page.navigate', { url: endereco + '?a=' + Date.now() });
-  for (let i = 0; i < 120; i++) {
-    const pronto = await avaliar(c, "(document.readyState==='complete'&&location.hostname==='127.0.0.1')||''");
+  // Endereço publicado (CM_BASE) passa pela internet: espera até 40 s.
+  const voltas = hostAlvo === '127.0.0.1' ? 120 : 400;
+  for (let i = 0; i < voltas; i++) {
+    const pronto = await avaliar(c, "(document.readyState==='complete'&&location.hostname===" + JSON.stringify(hostAlvo) + ")||''");
     if (pronto) break;
     await espera(100);
   }
   const dominio = await avaliar(c, 'location.hostname');
-  if (dominio !== '127.0.0.1') {
-    throw new Error('a página não carregou em 12 s (host: ' + (dominio || 'about:blank')
+  if (dominio !== hostAlvo) {
+    throw new Error('a página não carregou em ' + (voltas / 10) + ' s (host: ' + (dominio || 'about:blank')
       + ') — o servidor de arquivos da porta 8765 está de pé?');
   }
 }

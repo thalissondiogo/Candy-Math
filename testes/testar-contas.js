@@ -21,7 +21,9 @@
 const { criarNavegador, conectar, avaliar, espera, abrir } = require('./_navegador.js');
 
 const PORTA = 9334;
-const BASE = 'http://127.0.0.1:8765/index.html';
+// CM_BASE aponta para outro endereço (ex.: o site publicado): CM_BASE=https://exemplo.vercel.app
+const RAIZ_URL = (process.env.CM_BASE || 'http://127.0.0.1:8765').replace(/\/+$/, '');
+const BASE = RAIZ_URL + (process.env.CM_BASE ? '/' : '/index.html');
 const SENHA = 'doce-de-leite-42';
 const SENHA_NOVA = 'brigadeiro-de-colher-77';
 

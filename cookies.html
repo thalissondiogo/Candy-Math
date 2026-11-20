@@ -9,7 +9,8 @@
 <meta name="description" content="O Candy Math não usa cookies. Esta página lista cada chave que o jogo guarda no navegador, para que serve e como apagar.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="fontawesome/css/fontawesome.min.css">
+<link rel="stylesheet" href="fontawesome/css/solid.min.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -98,7 +99,8 @@
       tranca o boletim, os perfis, a conexão e a exclusão de dados outra vez. Nada dessa chave vai para o disco.</p>
 
     <h2 class="pv-secao">3. Pedidos que saem do navegador sem o jogo mandar dados</h2>
-    <p class="pv-texto">A página busca fonte e ícone em servidores de terceiros. Esses pedidos levam o
+    <p class="pv-texto">A página busca as fontes de texto em servidores de terceiros (os ícones moram no
+      próprio site). Esses pedidos levam o
       endereço IP e o agente do navegador, como qualquer pedido na web — é o que a conexão exige.
       <b>O jogo não acrescenta a eles nenhum dado de quem joga</b>: nem apelido, nem progresso, nem
       identificador. Não há cookie de publicidade, pixel de rede social nem contador de visitas.</p>
@@ -107,8 +109,6 @@
       <tbody>
         <tr><td><code>fonts.googleapis.com</code> / <code>fonts.gstatic.com</code></td>
           <td>As fontes Fredoka One e Nunito</td><td>Sempre, ao abrir a página</td></tr>
-        <tr><td><code>cdnjs.cloudflare.com</code></td>
-          <td>A folha de estilo dos ícones Font Awesome</td><td>Sempre, ao abrir a página</td></tr>
         <tr><td><code>cdn.jsdelivr.net</code></td>
           <td>A biblioteca supabase-js</td><td>Só quando a conexão está configurada em <code>config.js</code></td></tr>
         <tr><td><code>/api/voz</code> (o próprio projeto)</td>
@@ -118,7 +118,7 @@
             saída de dados <b>autorizada</b> em Responsáveis</td></tr>
       </tbody>
     </table>
-    <p class="pv-texto">Quem publica pode trocar as fontes e os ícones por cópias locais e eliminar até
+    <p class="pv-texto">Quem publica pode trocar também as fontes por cópias locais e eliminar até
       esses pedidos. O caminho está em <code>CONFIGURACAO-DEPLOY.md</code>.</p>
 
     <h2 class="pv-secao">4. Por que não há parede de consentimento</h2>

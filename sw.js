@@ -15,8 +15,9 @@
    Outras origens não são interceptadas DE PROPÓSITO: dentro do service worker
    todo fetch obedece ao connect-src da CSP (vercel.json), que não inclui os
    CDNs de fontes e ícones. Interceptar quebrava as fontes do jogo online.
-   Sem internet, fontes caem nas do sistema e os ícones não desenham; os
-   botões têm texto. Hospedar fontes e ícones no próprio site resolveria.
+   Os ícones (fontawesome/) moram no próprio site e entram no cache: sem
+   internet eles continuam desenhando. Só as fontes de texto vêm de fora; sem
+   internet caem nas do sistema.
 
    Atualização: VERSAO muda quando a lista de arquivos muda. A versão nova
    assume na hora e apaga os caches antigos — seguro porque, online, todo
@@ -24,13 +25,14 @@
    =================================================== */
 'use strict';
 
-const VERSAO = 'candymath-v3';
+const VERSAO = 'candymath-v4';
 
 // A página fica sob './' (a hospedagem usa URLs limpas: /index.html vira /).
 const ESTATICOS = [
   './', 'style.css', 'script.js', 'conteudo.js', 'banco-itens.js', 'guarda-roupa.js', 'mascote.js',
   'metas.js', 'pedagogia.js', 'contas.js', 'privacidade.js', 'como-jogar.js', 'avaliacao.js', 'duelo.js', 'config.js',
-  'narracao.js', 'nuvem.js', 'favicon.png', 'favicon.svg', 'manifest.json', 'icon-192.png', 'icon-512.png',
+  'narracao.js', 'nuvem.js', 'fontawesome/css/fontawesome.min.css', 'fontawesome/css/solid.min.css',
+  'fontawesome/webfonts/fa-solid-900.woff2', 'favicon.png', 'favicon.svg', 'manifest.json', 'icon-192.png', 'icon-512.png',
 ];
 
 self.addEventListener('install', (ev) => {

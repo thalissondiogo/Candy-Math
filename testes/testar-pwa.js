@@ -81,9 +81,9 @@ async function main() {
   })()`, true);
   confere('na segunda abertura o service worker controla a página', cache.controla, cache);
   confere('o cache do jogo tem a página e os scripts essenciais',
-    ['/', '/script.js', '/metas.js', '/pedagogia.js', '/style.css', '/conteudo.js', '/banco-itens.js', '/mascote.js'].every((p) => cache.chaves.indexOf(p) >= 0), cache.chaves);
+    ['/', '/script.js', '/metas.js', '/pedagogia.js', '/style.css', '/fontawesome/css/solid.min.css', '/fontawesome/webfonts/fa-solid-900.woff2', '/conteudo.js', '/banco-itens.js', '/mascote.js'].every((p) => cache.chaves.indexOf(p) >= 0), cache.chaves);
   confere('nada de /api/ entra no cache', cache.chaves.every((p) => p.indexOf('/api/') !== 0), cache.chaves);
-  confere('os caches têm os nomes desta versão', cache.nomes.indexOf('candymath-v3') >= 0 && cache.nomes.every((n) => /^candymath-/.test(n)), cache.nomes);
+  confere('os caches têm os nomes desta versão', cache.nomes.indexOf('candymath-v4') >= 0 && cache.nomes.every((n) => /^candymath-/.test(n)), cache.nomes);
   confere('nenhuma outra origem entra no cache (fontes, ícones, Supabase)', cache.chaves.length > 0 && !(await avaliar(c, `(async function(){
     var fora=0, nomes=await caches.keys(); for (var i=0;i<nomes.length;i++){ (await (await caches.open(nomes[i])).keys()).forEach(function(r){ if (new URL(r.url).origin !== location.origin) fora++; }); }
     return fora; })()`, true)));
