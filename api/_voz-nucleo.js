@@ -32,10 +32,10 @@ const { createHash } = require('crypto');
 // pode sair do ar; por isso ela é pinada por id aqui, e não por texto livre
 // vindo do navegador.
 const VOZES = {
-  sara: { rotulo: 'Sara', referenceId: '4e78ff4db2184b9f83cd7dbf296ac509' },
+  sara: { rotulo: 'Sarah', referenceId: '4e78ff4db2184b9f83cd7dbf296ac509' },
   bruna: { rotulo: 'Bruna', referenceId: '67e90549433041759a61e2272367e160' },
   miguel: { rotulo: 'Miguel', referenceId: '8c3a3634d6e24b8aac93418336d72f45' },
-  evelyn: { rotulo: 'Evelyn', referenceId: '0e3026e889bb4c038aeb2421a894b44b' },
+  evelyn: { rotulo: 'Evellyn', referenceId: '0e3026e889bb4c038aeb2421a894b44b' },
 };
 
 const MODELO_PADRAO = 's2.1-pro-free';

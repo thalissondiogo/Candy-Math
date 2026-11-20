@@ -86,10 +86,10 @@
       // sozinha. Para trocar, mexa o id nas duas listas (aqui e no núcleo da
       // função) — o rótulo na tela continua o mesmo.
       vozes: [
-        { id: 'sara', rotulo: 'Sara' },
+        { id: 'sara', rotulo: 'Sarah' },
         { id: 'bruna', rotulo: 'Bruna' },
         { id: 'miguel', rotulo: 'Miguel' },
-        { id: 'evelyn', rotulo: 'Evelyn' },
+        { id: 'evelyn', rotulo: 'Evellyn' },
       ],
       // Teto de caracteres por frase. Uma pergunta do jogo nunca chega perto
       // disso; o limite existe para conter uso abusivo do endpoint público.
