@@ -271,7 +271,7 @@ function montarNavegador(maqueta) {
     },
     navigator: { onLine: m.onLine === undefined ? true : m.onLine },
     // A autorização por finalidade é parte do caminho de rede: sem ela o
-    // narracao.js recusa e cai para a voz do aparelho. O padrão da maquete é
+    // narracao.js recusa e a pergunta fica em silêncio. O padrão da maquete é
     // autorizada, para que os casos abaixo continuem medindo o caminho de IA;
     // m.consentimento=false exercita a recusa.
     CM_CONSENTIMENTO: {
@@ -784,30 +784,33 @@ async function principal() {
   }
 
   // ═══ 3. O NAVEGADOR (narracao.js) ════════════════════════════════════
+  // A maquete oferece Web Speech de propósito: o jogo NÃO pode usá-la. As
+  // únicas vozes são as do projeto; sem elas, silêncio com motivo escrito.
   {
     const n = montarNavegador({ preferencia: 'desligada' });
     n.narracao.iniciar();
     const falou = await n.narracao.falar('Seis vezes quatro');
-    exige(falou === false, 'com a narração desligada nada é falado');
-    exige(n.fetches.length === 0 && n.falas.length === 0, 'desligada = nenhuma rede e nenhuma síntese');
+    exige(falou === false, 'com "Sem voz" nada é falado');
+    exige(n.fetches.length === 0 && n.falas.length === 0, 'sem voz = nenhuma rede e nenhuma síntese');
     exige(n.narracao.podeFalar() === false, 'o botão "Ouvir" sabe que está desligado');
+    exige(/desligada/.test(n.narracao.motivoSemVoz()), 'e explica o motivo ao tocar em Ouvir');
   }
 
   {
     const n = montarNavegador({ endpoint: '' });
     n.narracao.iniciar();
     const falou = await n.narracao.falar('Dez dividido por dois');
-    exige(falou === true, 'sem endpoint a fala acontece pelo aparelho, sem tocar em rede');
-    exige(n.fetches.length === 0, 'endpoint vazio = nada sai deste navegador');
-    exige(n.falas.length === 1 && n.falas[0].lang === 'pt-BR', 'a voz do aparelho é chamada em pt-BR');
-    exige(n.falas[0].rate === 0.92, 'a fala do aparelho vem mais devagar, como convém a uma criança');
+    exige(falou === false, 'sem a função de voz publicada a pergunta fica em silêncio');
+    exige(n.fetches.length === 0 && n.falas.length === 0, 'e nada sai do navegador, nem a voz do aparelho é usada');
+    exige(n.narracao.podeFalar() === false && /não está disponível/.test(n.narracao.motivoSemVoz()),
+      'o botão "Ouvir" sabe que não há voz neste site');
   }
 
   {
     const n = montarNavegador({});
     n.narracao.iniciar();
     const falou = await n.narracao.falar('Sete mais cinco são doze.');
-    exige(falou === true, 'no modo IA a frase é pedida à função do projeto');
+    exige(falou === true, 'com uma voz escolhida a frase é pedida à função do projeto');
     exige(n.fetches.length === 1, 'uma frase = uma requisição');
     exige(n.fetches[0].url === '/api/voz', 'o navegador fala com a função deste projeto, no mesmo endereço');
     const corpo = JSON.parse(n.fetches[0].opcoes.body);
@@ -819,6 +822,7 @@ async function principal() {
     exige(!(n.fetches[0].opcoes.headers || {}).Authorization, 'sem header de autorização no pedido do jogo');
     const audios = n.audios[0];
     exige(!!audios && n.tocados.length === 1, 'o áudio que volta é tocado');
+    exige(n.falas.length === 0, 'a voz do aparelho nunca entra');
     exige(ultimo(n).falando === true, 'enquanto toca, o estado diz "falando"');
     audios.onended();
     exige(ultimo(n).falando === false, 'quando o áudio termina, o estado volta ao neutro');
@@ -835,17 +839,17 @@ async function principal() {
   }
 
   // ═══ 3b. A AUTORIZAÇÃO DE QUEM ACOMPANHA ══════════════════════════════
-  // O texto da pergunta é dado que sai do aparelho. Sem autorização, o caminho
-  // de rede não é percorrido — e a criança continua ouvindo a voz do aparelho.
   {
     const n = montarNavegador({ consentimento: false });
     n.narracao.iniciar();
     const falou = await n.narracao.falar('Quanto é nove menos quatro?');
-    exige(falou === true, 'sem autorização a pergunta ainda é falada: pela voz do aparelho');
+    exige(falou === false, 'sem autorização a pergunta fica em silêncio');
     exige(n.fetches.length === 0, 'sem autorização NENHUMA requisição sai deste navegador');
-    exige(n.falas.length === 1, 'sem autorização quem fala é o sintetizador do aparelho');
+    exige(n.falas.length === 0, 'e a voz do aparelho não entra no lugar');
     exige(/autoriza/.test(ultimo(n).nota || ''), 'o estado diz que falta a autorização de quem acompanha');
     exige(n.narracao.estado().autorizada === false, 'a tela de voz sabe que a saída está desautorizada');
+    exige(n.narracao.podeFalar() === false && /Responsáveis/.test(n.narracao.motivoSemVoz()),
+      'o botão "Ouvir" diz onde autorizar');
   }
 
   {
@@ -855,22 +859,22 @@ async function principal() {
     exige(n.fetches.length === 1, 'autorizada, a frase é pedida à função');
     n.revogarVoz();
     const falou = await n.narracao.falar('Quanto é doze menos cinco?');
-    exige(falou === true, 'revogar não deixa a pergunta muda');
+    exige(falou === false, 'revogar silencia a pergunta seguinte');
     exige(n.fetches.length === 1, 'revogar interrompe o envio na hora: nenhuma requisição nova');
-    exige(n.falas.length === 1, 'depois de revogar, a voz é a do aparelho');
+    exige(n.falas.length === 0, 'e nenhuma outra voz assume');
     exige(n.narracao.estado().autorizada === false, 'a tela reflete a revogação sem recarregar');
   }
 
   {
     // Frase já em cache: revogar não pode continuar tocando o áudio que veio da
-    // rede por inércia. O cache é da sessão autorizada; sem autorização, aparelho.
+    // rede por inércia.
     const n = montarNavegador({});
     n.narracao.iniciar();
     await n.narracao.falar('Quanto é seis vezes sete?');
     n.revogarVoz();
-    await n.narracao.falar('Quanto é seis vezes sete?');
-    exige(n.fetches.length === 1, 'a frase repetida não volta à rede depois de revogar');
-    exige(n.falas.length === 1, 'a frase repetida é dita pelo aparelho, não pelo áudio guardado');
+    const falou = await n.narracao.falar('Quanto é seis vezes sete?');
+    exige(n.fetches.length === 1 && falou === false, 'a frase repetida não volta à rede nem toca do cache depois de revogar');
+    exige(n.tocados.length === 1, 'o áudio guardado não é tocado de novo');
   }
 
   {
@@ -901,6 +905,7 @@ async function principal() {
     n.narracao.iniciar();
     exige(n.narracao.definirVoz('dora') === false, 'o cliente não consegue escolher uma voz fora da lista do config');
     exige(n.narracao.definirPreferencia('satelite') === false, 'preferência inventada é recusada');
+    exige(n.narracao.preferencias().join(',') === 'peixe,desligada', 'só existem duas escolhas: voz do projeto ou sem voz');
     n.narracao.definirVoz('sara');
     exige(ultimo(n).voz === 'sara', 'a voz aprovada é aceita');
   }
@@ -909,53 +914,43 @@ async function principal() {
     const n = montarNavegador({ status: 503 });
     n.narracao.iniciar();
     const falou = await n.narracao.falar('Nove menos quatro');
-    exige(falou === true, 'função sem chave publicada não deixa a pergunta muda');
-    exige(n.falas.length === 1, 'e o jogo cai para a voz do aparelho');
-    exige(/IA n?ã?o veio|voz deste aparelho/.test(ultimo(n).nota) || ultimo(n).nota.length > 0,
-      'a queda é anotada para quem abriu a tela de voz');
-    exige(!/503/.test(ultimo(n).nota), 'a nota para a criança não é um código HTTP');
+    exige(falou === false && n.falas.length === 0, 'função sem chave: silêncio, sem voz do aparelho');
+    exige(ultimo(n).nota.length > 0 && !/503/.test(ultimo(n).nota), 'a queda é anotada, sem código HTTP para a criança');
   }
-
   {
     const n = montarNavegador({ status: 429 });
     n.narracao.iniciar();
     await n.narracao.falar('Doze dividido por quatro');
-    exige(n.falas.length === 1 && n.tocados.length === 0, 'um 429 da função vira voz do aparelho, sem tela quebrada');
+    exige(n.falas.length === 0 && n.tocados.length === 0, 'um 429 da função vira silêncio, sem tela quebrada');
   }
-
   {
     const n = montarNavegador({ recusa: 'rede' });
     n.narracao.iniciar();
     await n.narracao.falar('Cinco mais seis');
-    exige(n.falas.length === 1, 'rede caída vira voz do aparelho');
+    exige(n.falas.length === 0, 'rede caída não chama a voz do aparelho');
     exige(/não chegou/.test(ultimo(n).erro), 'e a falha fica registrada para a tela de voz: ' + ultimo(n).erro);
   }
-
   {
     const n = montarNavegador({ recusa: 'abort', comAbortador: true });
     n.narracao.iniciar();
     await n.narracao.falar('Quarenta e oito sobre oito');
     exige(/demorou demais/.test(ultimo(n).erro), 'tempo esgotado é tratado como voz atrasada, não como travamento');
-    exige(n.falas.length === 1, 'e a frase é dita pela voz do aparelho');
+    exige(n.falas.length === 0, 'e nenhuma outra voz assume');
   }
-
   {
     const n = montarNavegador({ onLine: false });
     n.narracao.iniciar();
-    await n.narracao.falar('Dois mais dois');
-    exige(n.fetches.length === 0, 'sem conexão o navegador nem tenta a função');
-    exige(n.falas.length === 1, 'e fala com a voz local');
-    exige(/sem conex/.test(ultimo(n).nota), 'a nota diz que foi por falta de conexão');
+    const falou = await n.narracao.falar('Dois mais dois');
+    exige(n.fetches.length === 0 && falou === false && n.falas.length === 0, 'sem conexão: nem rede, nem voz do aparelho');
+    exige(/sem internet/.test(ultimo(n).nota), 'a nota diz que foi por falta de conexão');
   }
-
   {
     const n = montarNavegador({ bloqueioDeReproducao: true });
     n.narracao.iniciar();
-    const falou = await n.narracao.falar('Sete vezes sete');
-    exige(falou === true, 'áudio que o celular se recusa a tocar não quebra a jogada');
-    void falou;
+    await n.narracao.falar('Sete vezes sete');
     await new Promise((r) => setTimeout(r, 0));
-    exige(n.falas.length === 1, 'e a voz do aparelho assume a frase');
+    exige(n.falas.length === 0 && /Ouvir de novo/.test(ultimo(n).erro),
+      'áudio que o celular se recusa a tocar pede outro toque, sem voz do aparelho');
   }
 
   {
@@ -971,7 +966,7 @@ async function principal() {
     n.narracao.iniciar();
     await n.narracao.falar('Um mais um');
     await n.narracao.falar('Dois mais dois');
-    exige(n.cancelou >= 1, 'a frase nova cancela a anterior: duas vozes nunca falam juntas');
+    exige(n.pausados.length >= 1, 'a frase nova para a anterior: duas vozes nunca falam juntas');
     n.narracao.parar();
     exige(ultimo(n).falando === false, 'o botão de parar desliga a fala na hora');
     exige(ultimo(n).carregando === false, 'e cancela o estado de espera');
@@ -980,12 +975,25 @@ async function principal() {
   {
     const n = montarNavegador({});
     n.narracao.iniciar();
-    n.narracao.definirPreferencia('aparelho');
-    exige(ultimo(n).preferencia === 'aparelho', 'a preferência escolhida é a que vale');
+    n.narracao.definirPreferencia('desligada');
+    exige(ultimo(n).preferencia === 'desligada', 'a preferência escolhida é a que vale');
     const gravado = JSON.parse(n.storage.get('candymath_voz_v1'));
     exige(Object.keys(gravado).sort().join(',') === 'preferencia,voz',
       'no localStorage só vivem preferencia e voz — nenhum dado de quem joga');
     exige(n.storage.size === 1, 'a narração usa uma única chave');
+  }
+
+  {
+    // Quem tinha escolhido a voz do aparelho antes passa para a voz do projeto.
+    const n = montarNavegador({});
+    n.storage.set('candymath_voz_v1', JSON.stringify({ preferencia: 'aparelho', voz: 'miguel' }));
+    n.narracao.iniciar();
+    exige(ultimo(n).preferencia === 'peixe' && ultimo(n).voz === 'miguel', 'preferência antiga "aparelho" vira a voz do projeto, mantendo a voz');
+    exige(n.narracao.definirPreferencia('aparelho') === true && ultimo(n).preferencia === 'peixe',
+      'pedir "aparelho" hoje também cai na voz do projeto');
+    const doConfig = montarNavegador({ preferencia: 'aparelho' });
+    doConfig.narracao.iniciar();
+    exige(ultimo(doConfig).preferencia === 'peixe', 'config antigo com "aparelho" também vira a voz do projeto');
   }
 
   {
@@ -1002,18 +1010,11 @@ async function principal() {
     const n = montarNavegador({ semSinteseNativa: true, recusa: 'rede' });
     n.narracao.iniciar();
     const falou = await n.narracao.falar('Oito menos três');
-    exige(falou === false, 'navegador sem Web Speech e com falha da função não finge que falou');
-    exige(ultimo(n).temAparelho === false, 'e a tela de voz sabe que este aparelho não tem voz nenhuma');
+    exige(falou === false, 'falha da função não finge que falou');
     exige(ultimo(n).falando === false, 'nada fica marcado como "falando" quando nada foi dito');
-  }
-
-  {
-    const n = montarNavegador({ endpoint: '' , semSinteseNativa: true });
-    n.narracao.iniciar();
-    exige(n.narracao.podeFalar() === false, 'sem endpoint e sem voz nativa o botão "Ouvir" se desliga');
-    const comIA = montarNavegador({ endpoint: '/api/voz', semSinteseNativa: true });
-    comIA.narracao.iniciar();
-    exige(comIA.narracao.podeFalar() === true, 'com a função publicada dá para ouvir mesmo sem voz no aparelho');
+    const semSintese = montarNavegador({ semSinteseNativa: true });
+    semSintese.narracao.iniciar();
+    exige(semSintese.narracao.podeFalar() === true, 'com a função publicada dá para ouvir mesmo sem voz no aparelho');
   }
 
   {
@@ -1031,66 +1032,48 @@ async function principal() {
     n.narracao.iniciar();
     exige(ultimo(n).vozes.length === 0, 'config sem lista de vozes não faz o jogo inventar uma');
     const falou = await n.narracao.falar('Um mais um');
-    exige(n.fetches.length === 0,
-      'sem vozes no config nenhuma frase sobe para a função: a tela não tem o que oferecer');
-    exige(falou === true && n.falas.length === 1, 'e a narração passa sozinha para a voz do aparelho');
-    exige(n.narracao.podeFalar() === true, 'com voz do aparelho disponível, "Ouvir" continua válido');
-    const semNada = montarNavegador({ vozes: [], semSinteseNativa: true });
-    semNada.narracao.iniciar();
-    exige(semNada.narracao.podeFalar() === false,
-      'sem vozes listadas e sem voz do aparelho o botão se desliga em vez de prometer voz');
+    exige(n.fetches.length === 0 && falou === false && n.falas.length === 0,
+      'sem vozes no config nada sobe e nada é dito');
+    exige(n.narracao.podeFalar() === false, 'e o botão "Ouvir" se desliga em vez de prometer voz');
   }
 
-  // ═══ 4. A TELA DE VOZ MONTA NUM DOM FALHO ════════════════════════════
-  // Foi aqui que a narração quebrou de verdade no navegador: montarInterface()
-  // chamou uma função que só existia no objeto exportado, o ReferenceError caiu
-  // no meio do DOMContentLoaded e a tela ficou muda. Os testes de estado, sozinhos,
-  // não viam nada — esta seção monta a tela com o DOM falso e confere o resultado.
+  // ═══ 4. A TELA DE VOZ MONTA NUM DOM FALSO ════════════════════════════
+  // Uma lista só: as vozes do config e "Sem voz".
   {
     const n = montarNavegador({ dom: true });
     n.narracao.iniciar();
     const fichasP = n.dom.documento.querySelectorAll('#vozPreferencias .chip-voz');
-    const fichasV = n.dom.documento.querySelectorAll('#vozLista .chip-voz');
-    exige(fichasP.length === 3, 'a tela monta as três origens de voz (IA, aparelho, sem narração)');
-    exige(fichasV.length === 2, 'uma ficha por voz do config (o navegador falso lista duas, e a tela obedece)');
-    exige(fichasV.map((b) => b.textContent).join(',') === 'Sara,Miguel',
-      'os rótulos vêm do config, não de texto fixo na tela: ' + fichasV.map((b) => b.textContent).join(','));
-    exige(fichasP.every((b) => b.getAttribute('role') === 'radio'), 'cada ficha é um radio para o leitor de tela');
-    const marcadas = fichasP.map((b) => b.getAttribute('aria-checked'));
-    exige(marcadas.filter((v) => v === 'true').length === 1,
-      'exatamente uma origem aparece escolhida no aria: ' + marcadas.join(', '));
-    exige(fichasP[0].classList.contains('ativa'), 'a ficha escolhida também muda de cara, não só de aria');
-    exige((n.textoDe('vozNotaPreferencia') || '').length > 20, 'a escolha vem explicada em linguagem de gente');
+    const fichas = n.dom.documento.querySelectorAll('#vozLista .chip-voz');
+    exige(fichasP.length === 0, 'não existe mais a escolha "de onde vem a voz"');
+    exige(fichas.length === 3, 'uma ficha por voz do config e mais "Sem voz"');
+    exige(fichas.map((b) => b.textContent).join(',') === 'Sara,Miguel,Sem voz',
+      'os rótulos vêm do config, e "Sem voz" fecha a lista: ' + fichas.map((b) => b.textContent).join(','));
+    exige(fichas.every((b) => b.getAttribute('role') === 'radio'), 'cada ficha é um radio para o leitor de tela');
+    const marcadas = fichas.map((b) => b.getAttribute('aria-checked'));
+    exige(marcadas.filter((v) => v === 'true').length === 1, 'exatamente uma ficha aparece escolhida: ' + marcadas.join(', '));
+    exige(fichas[0].classList.contains('ativa'), 'a voz escolhida também muda de cara, não só de aria');
+    exige((n.textoDe('vozNotaVoz') || '').length > 20, 'a escolha vem explicada em linguagem de gente');
     exige(n.textoDe('vozEstadoModal') === 'Pronto.', 'a linha de estado já nasce preenchida, sem buraco');
-    exige(n.dom.porId.get('vozPreferenciasPending').hidden === true,
-      'o aviso "carregando as opções" sai de cena quando as opções chegaram');
     exige(n.errosDeTela.length === 0, 'nenhuma tela de voz falhou ao pintar: ' + n.errosDeTela.join(' | '));
 
-    fichasP[2].click();
-    exige(n.narracao.estado().preferencia === 'desligada', 'clicar na ficha muda a preferência de verdade');
-    exige(fichasP[2].getAttribute('aria-checked') === 'true', 'e o aria acompanha o clique');
-    exige(!fichasP[0].classList.contains('ativa'), 'a ficha antiga deixa de estar marcada (não ficam duas ativas)');
-    exige(/comment-slash/.test(n.dom.porId.get('vozIcon').className),
-      'o botão do hub avisa com ícone que a narração está desligada');
-    exige(/volume-xmark/.test(n.dom.porId.get('btnFalarIcone').className),
-      'o botão Ouvir do cartão mostra o alto-falante cortado');
+    fichas[2].click();
+    exige(n.narracao.estado().preferencia === 'desligada', '"Sem voz" desliga de verdade');
+    exige(fichas[2].getAttribute('aria-checked') === 'true' && !fichas[0].classList.contains('ativa'),
+      'e só "Sem voz" fica marcada');
+    exige(/comment-slash/.test(n.dom.porId.get('vozIcon').className), 'o botão do hub avisa com ícone que a voz está desligada');
+    exige(/volume-xmark/.test(n.dom.porId.get('btnFalarIcone').className), 'o botão Ouvir do cartão mostra o alto-falante cortado');
 
-    fichasP[1].click();
-    exige(n.narracao.estado().preferencia === 'aparelho', 'o caminho do aparelho é escolhível');
-    exige(/sintetizador do seu sistema/.test(n.textoDe('vozNotaVoz')),
-      'no modo aparelho a nota diz que a voz é a do sistema, sem prometer IA');
+    fichas[1].click();
+    exige(n.narracao.estado().preferencia === 'peixe' && n.narracao.estado().voz === 'miguel',
+      'escolher uma voz liga a narração com essa voz');
+    exige(fichas[1].getAttribute('aria-checked') === 'true' && fichas[2].getAttribute('aria-checked') === 'false',
+      'a ficha da voz fica marcada e "Sem voz" desmarca');
     n.clique('vozTestar');
-    exige(n.falas.length === 1 && n.fetches.length === 0,
-      '"Ouvir uma amostra" fala na hora e sem tocar em rede');
-    exige(/fa-stop/.test(n.dom.porId.get('btnFalarIcone').className), 'enquanto fala, o botão vira parada');
-    exige(/falando/.test(n.textoDe('vozEstado')), 'o cartão da pergunta diz "falando…" para quem não vê o ícone');
+    await new Promise((r) => setTimeout(r, 0));
+    exige(n.fetches.length === 1 && n.falas.length === 0, '"Ouvir uma amostra" usa a voz do projeto, nunca a do aparelho');
     n.clique('vozParar');
-    exige(n.narracao.estado().falando === false && n.cancelou >= 1, 'o botão de parar corta a fala na tela');
+    exige(n.narracao.estado().falando === false, 'o botão de parar corta a fala na tela');
     exige(n.textoDe('vozEstado') === '', 'e a linha do cartão volta a ficar limpa');
-    exige(n.textoDe('vozEstadoModal') === 'Pronto.', 'o estado do modal também volta');
-
-    await n.narracao.falar('Nove mais quatro são treze.');
-    exige(/falando/.test(n.textoDe('vozEstado')), 'a fala pelo aparelho também pinta no cartão');
     exige(n.errosDeTela.length === 0, 'nenhuma tela quebrou durante os cliques: ' + n.errosDeTela.join(' | '));
   }
 
@@ -1098,7 +1081,7 @@ async function principal() {
     const n = montarNavegador({ dom: true, domPronto: false });
     exige(n.dom.porId.size === 0, 'com o documento ainda carregando, a tela não é montada antes da hora');
     n.dispararJanela('DOMContentLoaded');
-    exige(n.dom.documento.querySelectorAll('#vozLista .chip-voz').length === 2,
+    exige(n.dom.documento.querySelectorAll('#vozLista .chip-voz').length === 3,
       'o DOMContentLoaded monta a tela de voz pelo caminho do carregamento');
     exige(n.errosDeTela.length === 0, 'nenhum erro no caminho do carregamento: ' + n.errosDeTela.join(' | '));
   }
@@ -1108,16 +1091,15 @@ async function principal() {
     const aviso = n.dom.documento.querySelectorAll('#vozLista .voz-pending');
     exige(aviso.length === 1 && /Nenhuma voz listada/.test(aviso[0].textContent),
       'config sem vozes: a tela diz isso em vez de deixar o espaço em branco');
-    exige(n.dom.documento.querySelectorAll('#vozPreferencias .chip-voz')[0].disabled === true,
-      'sem vozes no config a ficha "Voz por IA" nasce apagada');
     exige(/nenhuma voz/i.test(n.textoDe('vozPendentes')), 'e a pendência diz exatamente o que falta fazer');
   }
 
   {
     const n = montarNavegador({ dom: true, endpoint: '' });
-    const fichas = n.dom.documento.querySelectorAll('#vozPreferencias .chip-voz');
-    exige(fichas.length === 2, 'sem função publicada a tela não oferece a voz por IA');
-    exige(fichas.every((b) => b.dataset.valor !== 'peixe'), 'e a ficha de IA nem aparece: nada de botão que só falha');
+    const fichas = n.dom.documento.querySelectorAll('#vozLista .chip-voz');
+    exige(fichas.filter((b) => b.dataset.grupo === 'voz').every((b) => b.disabled === true),
+      'sem função publicada as vozes aparecem apagadas: nada de botão que só falha');
+    exige(fichas.some((b) => b.textContent === 'Sem voz' && !b.disabled), 'e "Sem voz" continua escolhível');
   }
 
   // ═══ 5. AS DUAS LISTAS TÊM DE BATER ══════════════════════════════════

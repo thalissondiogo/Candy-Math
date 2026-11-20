@@ -1,13 +1,17 @@
 /* ===================================================
    CANDY MATH — narracao.js
-   A voz do Juba Candy. Dois caminhos, um único botão de parada:
+   A voz do mascote. Duas escolhas, um único botão de parada:
 
-     · 'peixe'    → pede o áudio à função api/voz.js e, se ela não vier
-                    (sem chave, sem rede, sem hospedagem), cai para a voz do
-                    aparelho no mesmo instante;
-     · 'aparelho' → nunca sai deste navegador (Web Speech API);
-     · 'desligada'→ silêncio. Tem criança que não quer ouvir nada, e isso é
+     · 'peixe'    → uma das quatro vozes do projeto (Sarah, Bruna, Miguel,
+                    Evellyn), pedida à função api/voz.js;
+     · 'desligada'→ sem voz. Tem criança que não quer ouvir nada, e isso é
                     escolha dela.
+
+   A voz sintética do aparelho (Web Speech API) saiu por decisão do dono do
+   projeto: o jogo fala só com as vozes escolhidas. Quando a voz por IA não
+   pode tocar (sem autorização de quem acompanha, sem internet, falha da
+   função), a pergunta fica em silêncio e o motivo aparece por escrito.
+   Saves com a preferência antiga 'aparelho' passam para 'peixe'.
 
    O que NÃO acontece aqui:
      · o texto enviado para /api/voz é só a frase a ser lida. Nem nome, nem
@@ -15,8 +19,8 @@
      · nada é gravado em disco: o único cache é o de memória desta aba, com
        teto de entradas e sem dado pessoal na chave;
      · duas vozes nunca falam juntas: a frase nova cancela a anterior antes;
-     · falha não trava o jogo: quem clica em "Ouvir" e a API não responde ouve
-       a voz do aparelho e uma nota discreta, nunca uma tela quebrada.
+     · falha não trava o jogo: quem clica em "Ouvir" e a API não responde lê
+       uma nota discreta, nunca uma tela quebrada.
    =================================================== */
 (function (root) {
   'use strict';
@@ -24,7 +28,9 @@
   const CHAVE_LOCAL = 'candymath_voz_v1';
   const TETO_DO_CACHE = 8;          // frases repetidas na mesma sessão
   const FIM_DA_JOGADA = 12000;      // ms esperando a função de voz
-  const PREFERENCIAS = ['peixe', 'aparelho', 'desligada'];
+  const PREFERENCIAS = ['peixe', 'desligada'];
+  // Preferência de antes, que não existe mais: vira a voz do projeto.
+  function migrarPreferencia(p) { return p === 'aparelho' ? 'peixe' : p; }
 
   let preferencia = 'peixe';
   let voz = 'sara';
@@ -40,7 +46,7 @@
     const c = (root.CM_CONFIG && root.CM_CONFIG.narracao) || {};
     return {
       endpoint: typeof c.endpoint === 'string' ? c.endpoint.trim() : '',
-      preferencia: PREFERENCIAS.indexOf(c.preferencia) >= 0 ? c.preferencia : 'peixe',
+      preferencia: PREFERENCIAS.indexOf(migrarPreferencia(c.preferencia)) >= 0 ? migrarPreferencia(c.preferencia) : 'peixe',
       vozes: Array.isArray(c.vozes) && c.vozes.length ? c.vozes : [],
       maximo: typeof c.maximoCaracteres === 'number' ? c.maximoCaracteres : 320,
     };
@@ -63,14 +69,6 @@
   // Sem isso, um config sem vozes continuaria pedindo "sara" à função por inércia.
   function temVozListada() {
     return config().vozes.some((v) => v && v.id === voz);
-  }
-
-  /* A Web Speech API existe em todo navegador moderno de celular e desktop,
-     mas não em todo WebView. Sem ela, o modo aparelho vira "não há voz" e a
-     interface diz isso em vez de fingir. */
-  function temVozDoAparelho() {
-    return typeof root.speechSynthesis !== 'undefined' &&
-      typeof root.SpeechSynthesisUtterance !== 'undefined';
   }
 
   function textoSeguro(bruto) {
@@ -124,7 +122,6 @@
       falando: !!atual,
       nota: nota,
       erro: ultimoErro,
-      temAparelho: temVozDoAparelho(),
       temEndpoint: !!c.endpoint,
       autorizada: autorizada(),
       desligada: preferencia === 'desligada',
@@ -143,8 +140,8 @@
     let lido = null;
     try { lido = JSON.parse(root.localStorage.getItem(CHAVE_LOCAL) || 'null'); } catch (e) { lido = null; }
     const c = config();
-    preferencia = (lido && PREFERENCIAS.indexOf(lido.preferencia) >= 0)
-      ? lido.preferencia : c.preferencia;
+    const salva = lido ? migrarPreferencia(lido.preferencia) : null;
+    preferencia = PREFERENCIAS.indexOf(salva) >= 0 ? salva : c.preferencia;
     voz = (lido && vozValida(lido.voz)) || vozValida('sara') || (c.vozes[0] && c.vozes[0].id) || 'sara';
   }
 
@@ -154,7 +151,6 @@
       if (atual.audio) { try { atual.audio.pause(); } catch (e) { /* já era */ } }
       atual = null;
     }
-    if (temVozDoAparelho()) { try { root.speechSynthesis.cancel(); } catch (e) { /* sem voz nativa */ } }
     carregando = false;
     nota = '';
   }
@@ -163,23 +159,12 @@
   let velocidade = 1;
   function definirVelocidade(v) { velocidade = [0.75, 1, 1.25].indexOf(v) >= 0 ? v : 1; return velocidade; }
 
-  function peloAparelho(texto) {
-    if (!temVozDoAparelho()) {
-      ultimoErro = 'este navegador não traz voz nenhuma';
-      avisar();
-      return false;
-    }
-    const fala = new root.SpeechSynthesisUtterance(texto);
-    fala.lang = 'pt-BR';
-    fala.rate = 0.92 * velocidade;
-    const id = config().vozes.find((v) => v.id === voz);
-    fala.pitch = /miguel/i.test((id && id.rotulo) || '') ? 0.85 : 1.1;
-    fala.onend = function () { if (atual && atual.fala === fala) { atual = null; avisar(); } };
-    fala.onerror = function () { if (atual && atual.fala === fala) { atual = null; avisar(); } };
-    atual = { fala: fala };
-    try { root.speechSynthesis.speak(fala); } catch (e) { atual = null; return false; }
+  // A voz por IA não pôde tocar: a pergunta fica em silêncio e o motivo vai
+  // para a tela de voz. Nunca há outra voz no lugar.
+  function semVoz(motivo) {
+    nota = motivo;
     avisar();
-    return true;
+    return false;
   }
 
   function guardarNoCache(chave, url, bytes) {
@@ -202,19 +187,18 @@
       if (atual && atual.audio === audio) atual = null;
       cache.delete(chave);
       ultimoErro = 'o áudio chegou mas este aparelho não soube tocar';
-      peloAparelho(textoDaChave(chave));
+      avisar();
     };
     atual = { audio: audio };
     avisar();
     audio.play().catch(function () {
-      // Celular que exige gesto do usuário: o clique já é o gesto, mas se
-      // mesmo assim bloquear, a voz do aparelho costuma passar.
+      // Celular que exige gesto do usuário: o clique já é o gesto; se mesmo
+      // assim bloquear, avisa em vez de insistir.
       if (atual && atual.audio === audio) atual = null;
-      peloAparelho(textoDaChave(chave));
+      ultimoErro = 'o navegador não deixou tocar o áudio; toque em Ouvir de novo';
+      avisar();
     });
   }
-
-  function textoDaChave(chave) { return String(chave).split('|').slice(1).join('|'); }
 
   function apagarCache() {
     cache.forEach((item) => {
@@ -231,18 +215,11 @@
 
     calar();                       // nunca duas vozes ao mesmo tempo
 
-    if (preferencia === 'aparelho' || !c.endpoint || !temVozListada()) return peloAparelho(texto);
+    if (!c.endpoint || !temVozListada()) return semVoz('a voz não está disponível neste site');
     // A pergunta sai do aparelho apenas com autorização de quem acompanha.
-    // Sem ela, a voz do próprio aparelho assume — que funciona sem rede e não
-    // manda nada. A recusa é no caminho, não na tela.
-    if (!autorizada()) {
-      nota = 'a voz por IA precisa da autorização de quem acompanha; usei a voz deste aparelho';
-      return peloAparelho(texto);
-    }
-    if (root.navigator && root.navigator.onLine === false) {
-      nota = 'sem conexão agora: usei a voz deste aparelho';
-      return peloAparelho(texto);
-    }
+    // A recusa é no caminho, não na tela.
+    if (!autorizada()) return semVoz('a voz precisa da autorização de quem acompanha (Responsáveis)');
+    if (root.navigator && root.navigator.onLine === false) return semVoz('sem internet agora: a voz volta quando a conexão voltar');
 
     const chave = voz + '|' + texto;
     const guardado = cache.get(chave);
@@ -280,10 +257,9 @@
     }
 
     if (!bytes) {
-      // Sem drama: cai para o aparelho e segue o jogo. A nota é para quem
-      // abriu a tela de voz, não para a criança no meio da conta.
-      nota = 'a voz por IA não veio; usei a voz deste aparelho';
-      return peloAparelho(texto);
+      // Sem drama: segue o jogo em silêncio. A nota é para quem abriu a
+      // tela de voz, não para a criança no meio da conta.
+      return semVoz('a voz não veio desta vez; tente Ouvir de novo');
     }
 
     const url = root.URL.createObjectURL(new root.Blob([bytes], { type: 'audio/mpeg' }));
@@ -292,7 +268,8 @@
     return true;
   }
 
-  function definirPreferencia(nova) {
+  function definirPreferencia(bruta) {
+    const nova = migrarPreferencia(bruta);
     if (PREFERENCIAS.indexOf(nova) < 0) return false;
     preferencia = nova;
     if (nova === 'desligada') { calar(); apagarCache(); }
@@ -321,18 +298,9 @@
   // A tela de voz mora junto da voz: o HTML só traz os containers, e este
   // módulo pinta as opções a partir do config. Assim trocar as quatro vozes é
   // mexer em config.js, não em dois lugares.
-  const ROTULO_PREFERENCIA = {
-    peixe: 'Voz por IA',
-    aparelho: 'Voz deste aparelho',
-    desligada: 'Sem narração',
-  };
   const EXPLICACAO_PREFERENCIA = {
-    peixe: 'Manda o texto da pergunta para a função /api/voz deste projeto e toca o áudio que '
-      + 'ela devolver — só com a autorização de quem acompanha. Se a função não estiver publicada, '
-      + 'a autorização não tiver sido dada ou a internet cair, o jogo vira sozinho para a voz deste '
-      + 'aparelho: a pergunta nunca fica muda.',
-    aparelho: 'Nada sai deste navegador. A qualidade é a voz que o seu aparelho já tem, e funciona '
-      + 'sem internet.',
+    peixe: 'O texto da pergunta vai para a função de voz deste projeto, que devolve o áudio — só com '
+      + 'a autorização de quem acompanha. Sem internet ou sem autorização, a pergunta fica em silêncio.',
     desligada: 'Nenhuma fala. O botão "Ouvir" fica silencioso.',
   };
 
@@ -347,7 +315,7 @@
     if (descricao) b.title = descricao;
     b.addEventListener('click', function () {
       if (grupo === 'preferencia') definirPreferencia(valor);
-      else definirVoz(valor);
+      else { definirVoz(valor); definirPreferencia('peixe'); }
     });
     pai.appendChild(b);
     return b;
@@ -358,24 +326,20 @@
   function pintar(s) {
     const d = doc();
     if (!d) return;
-    d.querySelectorAll('#vozPreferencias .chip-voz').forEach(function (b) {
-      const ativa = b.dataset.valor === s.preferencia;
-      b.classList.toggle('ativa', ativa);
-      b.setAttribute('aria-checked', String(ativa));
-      b.disabled = b.dataset.valor === 'peixe' && !(s.temEndpoint && s.vozes.length);
-    });
+    // Uma lista só: as vozes do projeto e "Sem voz". Escolher uma voz liga a
+    // narração; "Sem voz" desliga.
     d.querySelectorAll('#vozLista .chip-voz').forEach(function (b) {
-      const ativa = b.dataset.valor === s.voz;
+      const ativa = b.dataset.grupo === 'preferencia' ? s.desligada : (!s.desligada && b.dataset.valor === s.voz);
       b.classList.toggle('ativa', ativa);
       b.setAttribute('aria-checked', String(ativa));
+      if (b.dataset.grupo !== 'preferencia') b.disabled = !s.temEndpoint;
     });
     const notaP = d.getElementById('vozNotaPreferencia');
     if (notaP) notaP.textContent = EXPLICACAO_PREFERENCIA[s.preferencia] || '';
     const notaV = d.getElementById('vozNotaVoz');
     if (notaV) {
-      notaV.textContent = s.preferencia === 'aparelho'
-        ? 'No modo aparelho a voz escolhida só muda o tom: quem fala é o sintetizador do seu sistema.'
-        : (s.vozes.length > 0 ? 'Amostra: ' + s.rotulo + '. São as vozes do projeto, gravadas na Fish Audio e fixadas pelo código da voz — se uma delas não servir, o dono troca o código no config.js e na lista do servidor.' : '');
+      notaV.textContent = s.desligada ? EXPLICACAO_PREFERENCIA.desligada
+        : (s.vozes.length > 0 ? 'Voz escolhida: ' + s.rotulo + '. ' + EXPLICACAO_PREFERENCIA.peixe : '');
     }
     const estado = d.getElementById('vozEstadoModal');
     if (estado) {
@@ -390,16 +354,15 @@
     if (pendentes) {
       let texto = '';
       if (!s.temEndpoint) {
-        texto = 'Pendente: a narração por IA só existe depois de publicar a função api/voz.js na '
-          + 'hospedagem e de preencher a variável secreta FISH_AUDIO_API_KEY. Enquanto isso, use a '
-          + 'voz deste aparelho.';
+        texto = 'Pendente: a voz só existe depois de publicar a função api/voz.js na hospedagem e '
+          + 'de preencher a variável secreta FISH_AUDIO_API_KEY.';
       } else if (!s.vozes.length) {
         texto = 'Pendente: nenhuma voz está listada em config.js, então a narração por IA fica '
           + 'apagada aqui. O dono do projeto escolhe as vozes na lista "narracao.vozes".';
       } else if (!s.autorizada) {
         texto = 'Falta a autorização de quem acompanha para mandar o texto da pergunta à função de voz. '
-          + 'Ela é dada no boletim (Responsáveis), em "Saídas de dados autorizadas". Até lá, quem fala '
-          + 'é a voz deste aparelho, que não manda nada para a internet.';
+          + 'Ela é dada no boletim (Responsáveis), em "Saídas de dados autorizadas". Até lá, as '
+          + 'perguntas ficam em silêncio.';
       }
       pendentes.textContent = texto;
       pendentes.hidden = !texto;
@@ -425,16 +388,13 @@
     if (!d) return;
     const grupoP = d.getElementById('vozPreferencias');
     const grupoV = d.getElementById('vozLista');
-    if (grupoP && !grupoP.querySelector('.chip-voz')) {
-      preferenciasParaMostrar().forEach(function (p) {
-        chip(grupoP, { valor: p, rotulo: ROTULO_PREFERENCIA[p] || p, grupo: 'preferencia',
-          descricao: EXPLICACAO_PREFERENCIA[p] || '' });
-      });
-    }
+    // O campo "de onde vem a voz" deixou de existir: sai da tela.
+    if (grupoP && grupoP.closest) { const campo = grupoP.closest('fieldset'); if (campo) campo.hidden = true; }
     if (grupoV && !grupoV.querySelector('.chip-voz')) {
       config().vozes.forEach(function (v) {
         chip(grupoV, { valor: v.id, rotulo: v.rotulo, grupo: 'voz' });
       });
+      chip(grupoV, { valor: 'desligada', rotulo: 'Sem voz', grupo: 'preferencia', descricao: EXPLICACAO_PREFERENCIA.desligada });
       if (!config().vozes.length) {
         const aviso = d.createElement('p');
         aviso.className = 'voz-pending';
@@ -449,13 +409,6 @@
     const pararBotao = d.getElementById('vozParar');
     if (pararBotao) pararBotao.addEventListener('click', function () { calar(); avisar(); });
     aoMudar(pintar);
-  }
-
-  function preferenciasParaMostrar() {
-    // O modo IA só aparece se houver para onde mandar; sem hospedagem, a tela
-    // não oferece um botão que não faz nada.
-    if (config().endpoint) return PREFERENCIAS.slice();
-    return PREFERENCIAS.filter(function (p) { return p !== 'peixe'; });
   }
 
   if (typeof document !== 'undefined') {
@@ -489,10 +442,16 @@
     aoMudar: aoMudar,
     podeFalar: function () {
       if (preferencia === 'desligada') return false;
-      if (preferencia === 'aparelho') return temVozDoAparelho();
-      // Modo IA: só faz sentido haver para onde mandar E uma voz da lista do
-      // projeto para mandar. Fora isso, é a voz do aparelho ou silêncio.
-      return temVozDoAparelho() || (!!config().endpoint && temVozListada());
+      // Só faz sentido haver para onde mandar, uma voz da lista do projeto e a
+      // autorização de quem acompanha. Fora isso, silêncio.
+      return !!config().endpoint && temVozListada() && autorizada();
+    },
+    // Frase curta para o aviso do botão "Ouvir" quando não há voz.
+    motivoSemVoz: function () {
+      if (preferencia === 'desligada') return 'A voz está desligada. Escolha uma em Voz.';
+      if (!config().endpoint || !temVozListada()) return 'A voz não está disponível neste site.';
+      if (!autorizada()) return 'Para ouvir, quem acompanha autoriza a voz em Responsáveis.';
+      return '';
     },
     limiteDeTexto: function () { return config().maximo; },
     // Só para os testes: tamanho e chaves do cache de memória. As chaves

@@ -1413,6 +1413,34 @@ async function main() {
   confere('nome do mascote adulterado no storage chega saneado, sem tags',
     await avaliar(c, "G.nomeMascote==='scriptalert1script' && document.body.innerHTML.indexOf('<script>alert')<0"), await avaliar(c, 'G.nomeMascote'));
 
+  // ── 14f. voltar ao topo e tela de voz ──
+  await avaliar(c, "closeAllModals(); goHub(); true");
+  await espera(400);
+  const topo0 = await avaliar(c, "(function(){var b=document.getElementById('btnTopo');return {vis:b.classList.contains('visivel'),tab:b.tabIndex,aria:b.getAttribute('aria-hidden')};})()");
+  confere('no topo do hub o botão Voltar ao topo fica escondido, fora do teclado e do leitor de tela',
+    !topo0.vis && topo0.tab === -1 && topo0.aria === 'true', topo0);
+  await avaliar(c, "(function(){var r=[document.getElementById('screenHub'),document.querySelector('#screenHub .hub-body')];r.forEach(function(x){x.style.scrollBehavior='auto';x.scrollTop=5000;x.dispatchEvent(new Event('scroll'));});return true;})()");
+  await espera(300);
+  const topo1 = await avaliar(c, "(function(){var b=document.getElementById('btnTopo');var r=[document.getElementById('screenHub'),document.querySelector('#screenHub .hub-body')];return {vis:b.classList.contains('visivel'),tab:b.tabIndex,longe:r.some(function(x){return x.scrollTop>480;}),nome:b.textContent.trim()};})()");
+  if (topo1.longe) {
+    confere('depois de rolar o hub, o botão Voltar ao topo aparece com nome para leitor de tela',
+      topo1.vis && topo1.tab === 0 && topo1.nome === 'Voltar ao topo', topo1);
+    await avaliar(c, "document.getElementById('btnTopo').click(); true");
+    await espera(900);
+    confere('o botão leva o hub de volta ao topo',
+      await avaliar(c, "[document.getElementById('screenHub'),document.querySelector('#screenHub .hub-body')].every(function(x){return x.scrollTop<5;})"));
+  }
+  await avaliar(c, "[document.getElementById('screenHub'),document.querySelector('#screenHub .hub-body')].forEach(function(x){x.style.scrollBehavior='';}); true");
+  await avaliar(c, "openModal('modalNarracao'); true");
+  await espera(300);
+  const telaVoz = await avaliar(c, `({ fichas:Array.prototype.slice.call(document.querySelectorAll('#vozLista .chip-voz')).map(function(b){return b.textContent;}),
+    origem:!!document.querySelector('#vozPreferencias').closest('fieldset').hidden,
+    aparelho:/voz (do|deste) aparelho/i.test(document.getElementById('modalNarracao').textContent) })`);
+  confere('a tela de voz oferece só Sarah, Bruna, Miguel, Evellyn e Sem voz',
+    telaVoz.fichas.join(',') === 'Sarah,Bruna,Miguel,Evellyn,Sem voz' && telaVoz.origem, telaVoz);
+  confere('a tela de voz não fala mais em voz do aparelho', !telaVoz.aparelho, telaVoz);
+  await avaliar(c, "closeAllModals(); true");
+
   // ── 15. nenhum erro de console no percurso ──
   const gritos = c.eventos.filter((e) =>
     (e.method === 'Runtime.exceptionThrown')

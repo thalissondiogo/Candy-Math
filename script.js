@@ -1070,6 +1070,7 @@ function soltarBarras(raiz) {
 // escuta só cobre as telas, o corpo do hub e os diálogos, cada um com seu rolador.
 document.addEventListener('scroll', (ev) => {
   verRestantesDoHub();
+  pintarBotaoTopo();
   const rolavel = ev.target === document ? document.scrollingElement : ev.target;
   if (!(rolavel instanceof Element)) return;
   const barra = barraDaRaiz(rolavel.closest('.modal') || rolavel.closest('.screen'));
@@ -1113,6 +1114,29 @@ document.addEventListener('animationend', (ev) => {
     ev.target.classList.remove('barra-voltando');
   }
 });
+
+// Voltar ao topo do hub. Quem rola no hub é o .hub-body ou a própria tela,
+// conforme a altura da janela: o botão olha os dois.
+const TOPO_DO_BOTAO = 480;
+function roladoresDoHub() {
+  return [$('screenHub'), document.querySelector('#screenHub .hub-body')].filter(Boolean);
+}
+function pintarBotaoTopo() {
+  const b = $('btnTopo');
+  if (!b) return;
+  const longe = roladoresDoHub().some((r) => r.scrollTop > TOPO_DO_BOTAO);
+  if (b.classList.contains('visivel') === longe) return;
+  b.classList.toggle('visivel', longe);
+  // Escondido, ele sai também do teclado e do leitor de tela.
+  b.tabIndex = longe ? 0 : -1;
+  b.setAttribute('aria-hidden', String(!longe));
+}
+function voltarAoTopo() {
+  const suave = !MOVIMENTO_REDUTO && !(G.prefs && G.prefs.calmo);
+  roladoresDoHub().forEach((r) => r.scrollTo({ top: 0, behavior: suave ? 'smooth' : 'auto' }));
+  const tela = $('screenHub');
+  if (tela) tela.focus({ preventScroll: true });
+}
 
 let restantesNaFila = null;
 
@@ -1830,7 +1854,7 @@ function ouvirExplicacao() {
   if (!ultimaExplicacao) return;
   const voz = window.CM_NARRACAO;
   if (voz && voz.podeFalar()) { voz.falar(ultimaExplicacao); return; }
-  showToast('A narração está desligada. Acenda em Voz.');
+  showToast((voz && voz.motivoSemVoz()) || 'A voz está desligada. Escolha uma em Voz.');
 }
 
 function avancarQuiz() {
@@ -3886,14 +3910,14 @@ function playSound(type) {
   } catch(e) {}
 }
 
-// O botão "Ouvir" pede a frase atual ao módulo de voz. Toda a política (IA,
-// voz do aparelho, silêncio, parar a fala anterior) está em narracao.js — aqui
+// O botão "Ouvir" pede a frase atual ao módulo de voz. Toda a política (voz
+// do projeto, silêncio, parar a fala anterior) está em narracao.js — aqui
 // só entrega o texto da pergunta e nada mais.
 function speakText() {
   if (!G.currentQ) return;
   const voz = window.CM_NARRACAO;
   if (voz && voz.podeFalar()) { voz.falar(G.currentQ.txt); return; }
-  if (typeof showToast === 'function') showToast('A narração está desligada. Acenda em Voz.');
+  if (typeof showToast === 'function') showToast((voz && voz.motivoSemVoz()) || 'A voz está desligada. Escolha uma em Voz.');
 }
 
 function pararFala() {
@@ -4239,6 +4263,7 @@ const ACOES_DOS_BOTOES = {
   limparEquip:   function ()          { limparEquip(); },
   escolherMascote: function (id)      { escolherMascote(id); },
   salvarNomeMascote: function ()      { salvarNomeMascote(); },
+  voltarAoTopo:  function ()          { voltarAoTopo(); },
   nomeOriginalMascote: function ()    { nomeOriginalMascote(); },
   nextPuzzle:    function ()          { nextPuzzle(); },
   openModal:     function (id)        { openModal(id); },
