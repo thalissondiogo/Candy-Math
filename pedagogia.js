@@ -361,11 +361,16 @@
   function ultimo(lista) { return lista[lista.length - 1][0]; }
 
   function compactarTabelas(ev) {
+    // Habilidades em ordem alfabética num objeto novo: a ordem das chaves
+    // não pode depender da história (quem entrou primeiro, quem foi aparado),
+    // senão o mesmo conteúdo vira JSON diferente depois de recarregar.
     const nova = { c: [], x: [], j: [] };
+    const h = {};
     Object.keys(ev.h).sort().forEach((k) => {
-      ev.h[k] = ev.h[k].map((r) => [r[0], r[1], r[2],
+      h[k] = ev.h[k].map((r) => [r[0], r[1], r[2],
         posicao(nova.x, ev.t.x[r[3]]), posicao(nova.c, ev.t.c[r[4]]), posicao(nova.j, ev.t.j[r[5]])]);
     });
+    ev.h = h;
     ev.t = nova;
   }
 

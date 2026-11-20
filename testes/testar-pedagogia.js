@@ -173,6 +173,14 @@ confere('as tabelas não guardam nome que nenhum registro usa',
   cheio.t.c.every((_, i) => Object.values(cheio.h).some((l) => l.some((r) => r[4] === i))));
 confere('6000 respostas no teto levam menos de 3 s', msCheio < 3000, msCheio);
 confere('depois de cheio, sanitizar não muda nada', igual(P.sanitizar(copia(cheio), AGORA), cheio));
+// Ordem de chegada diferente da ordem alfabética, com a primeira habilidade
+// aparada pelo teto: o JSON tem de ser o mesmo depois de recarregar.
+const ordem2 = P.vazio();
+P.registrar(ordem2, { item: item('Zeta', ['EF09MA01']), acertou: true, jogo: 'quiz' }, AGORA);
+for (let i = 0; i < 20; i++) P.registrar(ordem2, { item: item('Alfa ' + i, ['EF01MA01']), acertou: true, jogo: 'quiz' }, AGORA);
+for (let i = 0; i < 13; i++) P.registrar(ordem2, { item: item('Zeta ' + i, ['EF09MA01']), acertou: true, jogo: 'quiz' }, AGORA);
+confere('a forma guardada é canônica: recarregar devolve o mesmo JSON, chave por chave',
+  JSON.stringify(P.sanitizar(copia(ordem2), AGORA)) === JSON.stringify(ordem2) && igual(Object.keys(ordem2.h), ['EF01MA01', 'EF09MA01']));
 
 // ── 6. isolamento entre estudantes ─────────────────────────
 const ana = P.vazio(), beto = P.vazio();
