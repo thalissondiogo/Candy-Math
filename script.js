@@ -27,7 +27,9 @@ const G = {
   puzIndex: 0,
   memIndex: 0,
   roulIndex: 0,
-  equip: { hat:null, wig:null, mask:null, glasses:null, outfit:null, shoes:null, accessory:null },
+  equip: { hat:null, wig:null, mask:null, glasses:null, outfit:null, top:null, bottom:null, cape:null, shoes:null, accessory:null },
+  // Nome que a criança deu ao mascote ('' = nome da espécie). Só no aparelho.
+  nomeMascote: '',
   owned: [],
   duelos: { jogados: 0, ganhos: 0, achados: 0, melhorTempo: 0, recorde: [] },
   provas: [],
@@ -1190,6 +1192,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   renderShop('all');
   armarProvaDePeca();
+  // Enter no campo do nome salva, como o botão ao lado.
+  const campoNome = $('wdNome');
+  if (campoNome) campoNome.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); salvarNomeMascote(); } });
   pintarMascotes();
   setupParticleCanvas();
   pintarConexao();
@@ -1251,6 +1256,7 @@ function trocarEstudante(perfil) {
     prefs: prefsVazias(),
     familia: familiaVazia(),
     mascote: 'onca',
+    nomeMascote: '',
   });
   recentes = [];
   resetarMonte();
@@ -1392,9 +1398,44 @@ function pintarUmMascote(el, equip, corte, titulo, estagio) {
   const chave = corte + '#' + MASCOTE.assinatura(equip) + '#' + est + '#' + G.mascote + '#' + (titulo || '');
   if (el.dataset.figurino === chave) return;
   el.dataset.figurino = chave;
-  el.innerHTML = MASCOTE.svg(equip, { corte: corte, titulo: titulo, estagio: est, especie: G.mascote });
+  el.innerHTML = MASCOTE.svg(equip, { corte: corte, titulo: titulo, estagio: est, especie: G.mascote, nome: G.nomeMascote });
 }
-function mascoteAtual() { return MASCOTE.especie(G.mascote); }
+function mascoteAtual() { return MASCOTE.especie(G.mascote, G.nomeMascote); }
+// Nome do mascote (Guarda-Roupa): a criança escreve, o jogo usa em todo
+// lugar onde o bicho fala ou é citado. Vazio volta ao nome da espécie.
+function salvarNomeMascote() {
+  const campo = $('wdNome');
+  if (!campo) return;
+  const bruto = campo.value;
+  const nome = MASCOTE.nomeValido(bruto);
+  if (bruto.trim() && !nome) {
+    pintarNomeMascote('Use letras e números: ' + MASCOTE.NOME_MAX + ' no máximo.');
+    return;
+  }
+  G.nomeMascote = nome;
+  saveState();
+  pintarMascotes();
+  updateWardrobePreview();
+  updateHubUI();
+  pintarNomeMascote(nome ? 'Pronto! Agora o seu mascote se chama ' + nome + '.'
+                         : 'O mascote voltou a se chamar ' + mascoteAtual().nome + '.');
+}
+function nomeOriginalMascote() {
+  const campo = $('wdNome');
+  if (campo) campo.value = '';
+  salvarNomeMascote();
+  if (campo) campo.focus();
+}
+function pintarNomeMascote(aviso) {
+  const campo = $('wdNome');
+  if (!campo) return;
+  campo.value = G.nomeMascote;
+  campo.placeholder = MASCOTE.especie(G.mascote).nome;
+  const msg = $('wdNomeAviso');
+  if (msg) msg.textContent = aviso || '';
+  const volta = $('wdNomeOriginal');
+  if (volta) volta.hidden = !G.nomeMascote;
+}
 // Escolha do bicho no Guarda-Roupa. Roupas, insígnia e progresso seguem iguais.
 function escolherMascote(id) {
   const novo = MASCOTE.especieValida(id);
@@ -1404,6 +1445,7 @@ function escolherMascote(id) {
   pintarEspecies();
   pintarMascotes();
   updateWardrobePreview();
+  pintarNomeMascote();
   falarAviso('Agora o seu mascote é ' + mascoteAtual().nome + ', ' + mascoteAtual().animal + '.');
 }
 function pintarEspecies() {
@@ -3192,7 +3234,7 @@ function pintarTabuleiro() {
     b.textContent = v;
     b.disabled = !(velha.fase === 'escolher' && !v);
     b.setAttribute('aria-label', 'Linha ' + (Math.floor(i / 3) + 1) + ', coluna ' + (i % 3 + 1) + ': ' +
-      (v === 'X' ? 'seu X' : v === 'O' ? 'O da Juba' : 'vazia'));
+      (v === 'X' ? 'seu X' : v === 'O' ? 'O ' + mascoteAtual().de : 'vazia'));
     b.addEventListener('click', () => jogarNaCasa(i));
     tab.appendChild(b);
   });
@@ -3244,7 +3286,7 @@ function responderVelha(escolha, certa, btn) {
   atualizarBarra('velhaStarsBar');
   velha.fase = 'leitura';
   const exp = explicacaoDe(G.currentQ);
-  showVelhaFeedback('A resposta certa é ' + G.currentQ.alt[0] + '. ' + (exp ? exp + ' ' : '') + 'A vez passa para a Juba.');
+  showVelhaFeedback('A resposta certa é ' + G.currentQ.alt[0] + '. ' + (exp ? exp + ' ' : '') + 'A vez passa para ' + mascoteAtual().o + '.');
   $('velhaStatus').textContent = 'Leia a explicação e toque em Continuar.';
   saveState();
   const botao = $('velhaContinuar');
@@ -3258,8 +3300,8 @@ function jogarNaCasa(i) {
   velha.fase = 'juba';
   pintarTabuleiro();
   if (fimDaVelha()) return;
-  $('velhaStatus').textContent = 'Vez da Juba…';
-  $('velhaProg').textContent = 'Vez da Juba';
+  $('velhaStatus').textContent = 'Vez ' + mascoteAtual().de + '…';
+  $('velhaProg').textContent = 'Vez ' + mascoteAtual().de;
   setTimeout(jogadaDaJuba, 700);
 }
 
@@ -3304,11 +3346,11 @@ function fimDaVelha() {
   velha.fase = 'fim';
   pintarTabuleiro();
   document.querySelectorAll('#velhaOpcoes .ans-btn').forEach((b) => (b.disabled = true));
-  const texto = v === 'X' ? 'Você fechou a linha e venceu a Juba!'
-    : v === 'O' ? 'A Juba fechou a linha desta vez. Na próxima, de olho nas casas dela!'
+  const texto = v === 'X' ? 'Você fechou a linha e venceu ' + mascoteAtual().o + '!'
+    : v === 'O' ? mascoteAtual().O + ' fechou a linha desta vez. Na próxima, de olho nas casas ' + mascoteAtual().de + '!'
     : 'Deu velha: ninguém fechou a linha.';
   $('velhaStatus').textContent = texto;
-  $('velhaProg').textContent = v === 'X' ? 'Vitória' : v === 'O' ? 'Juba venceu' : 'Empate';
+  $('velhaProg').textContent = v === 'X' ? 'Vitória' : v === 'O' ? mascoteAtual().O + ' venceu' : 'Empate';
   showVelhaFeedback(texto);
   saveState();
   setTimeout(() => { if ($('screenVelha').classList.contains('active')) finishRound('velha'); }, 1600);
@@ -3348,6 +3390,7 @@ function openShop() {
   const primeira = $('shopTabs').querySelector('.stab');
   if (primeira) primeira.classList.add('active');
   pintarEspecies();
+  pintarNomeMascote();
   updateWardrobePreview();
   openModal('modalShop');
 }
@@ -3370,7 +3413,7 @@ function renderShop(cat) {
   if (!itens.length) {
     const vazio = document.createElement('p');
     vazio.className = 'shop-vazio';
-    vazio.textContent = 'Sua caixa ainda está vazia. Jogue uma rodada, junte estrelas e volte aqui para escolher a roupa da Juba.';
+    vazio.textContent = 'Sua caixa ainda está vazia. Jogue uma rodada, junte estrelas e volte aqui para escolher a roupa ' + mascoteAtual().de + '.';
     grid.appendChild(vazio);
     return;
   }
@@ -3467,14 +3510,14 @@ function toggleEquip(id, slot) {
 
 function limparEquip() {
   const tinha = SLOTS_EQUIP.some((s) => G.equip[s]);
-  if (!tinha) { showToast('A Juba já está sem nenhuma peça.'); return; }
+  if (!tinha) { showToast(mascoteAtual().O + ' já está sem nenhuma peça.'); return; }
   G.equip = GR.equipVazio();
   pecaEmProva = null;
   saveState();
   renderShop(shopFilter);
   updateWardrobePreview();
   updateHubUI();
-  showToast('Figurino guardado na caixa. A Juba voltou ao pelo e à bandana.');
+  showToast('Figurino guardado na caixa. ' + mascoteAtual().O + ' voltou ao pelo e à bandana.');
 }
 
 function updateWardrobePreview() {
@@ -3499,7 +3542,7 @@ function updateWardrobePreview() {
     });
     const nada = document.createElement('li');
     nada.className = 'wd-slot-vazio';
-    nada.textContent = 'Nada vestido ainda. Escolha uma peça abaixo — ela aparece na Juba na hora.';
+    nada.textContent = 'Nada vestido ainda. Escolha uma peça abaixo — ela aparece no mascote na hora.';
     lista.appendChild(nada);
   }
   pintarPalco();
@@ -3714,6 +3757,7 @@ function apagarLocal(semAviso) {
   G.prefs = prefsVazias();
   G.familia = familiaVazia();
   G.mascote = 'onca';
+  G.nomeMascote = '';
   aplicarPreferencias();
   resetarMonte();
   const guardado = gravarLocal();
@@ -4013,6 +4057,7 @@ function gravarLocal() {
       prefs:        G.prefs,
       familia:      G.familia,
       mascote:      G.mascote,
+      nomeMascote:  G.nomeMascote,
     }));
     return true;
   } catch (e) {
@@ -4159,6 +4204,7 @@ function loadState() {
   G.prefs           = prefsSanit(d.prefs);
   G.familia         = familiaSanit(d.familia);
   G.mascote         = MASCOTE.especieValida(d.mascote);
+  G.nomeMascote     = MASCOTE.nomeValido(d.nomeMascote);
   const sIcon = $('soundIcon');
   if (sIcon) sIcon.className = G.soundOn ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
 }
@@ -4192,6 +4238,8 @@ const ACOES_DOS_BOTOES = {
   imprimir:      function ()          { window.print(); },
   limparEquip:   function ()          { limparEquip(); },
   escolherMascote: function (id)      { escolherMascote(id); },
+  salvarNomeMascote: function ()      { salvarNomeMascote(); },
+  nomeOriginalMascote: function ()    { nomeOriginalMascote(); },
   nextPuzzle:    function ()          { nextPuzzle(); },
   openModal:     function (id)        { openModal(id); },
   openShop:      function ()          { openShop(); },

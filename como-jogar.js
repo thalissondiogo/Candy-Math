@@ -78,14 +78,14 @@ const TUTORIAIS = {
   },
   velha: {
     nome: 'Velha Doce', icone: 'fa-hashtag',
-    treina: 'resolver a conta com calma e, depois, pensar onde jogar: fechar a sua linha ou atrapalhar a da Juba.',
+    treina: 'resolver a conta com calma e, depois, pensar onde jogar: fechar a sua linha ou atrapalhar a linha {de}.',
     passos: [
-      'Você é o X e a Juba é o O, num jogo da velha de 3 por 3.',
+      'Você é o X e {o} é o O, num jogo da velha de 3 por 3.',
       'Na sua vez aparece uma pergunta. Acertou? Toque na casa onde quer o seu X.',
-      'Depois a Juba joga. Ganha quem fizer uma linha, coluna ou diagonal primeiro.',
-      'Nos níveis mais altos a Juba presta mais atenção: ela bloqueia e ataca.',
+      'Depois {o} joga. Ganha quem fizer uma linha, coluna ou diagonal primeiro.',
+      'Nos níveis mais altos {o} presta mais atenção: bloqueia e ataca.',
     ],
-    erro: 'Errou a conta? A resposta certa aparece com a explicação, você lê com calma e a vez passa para a Juba. Ninguém perde estrela por errar.',
+    erro: 'Errou a conta? A resposta certa aparece com a explicação, você lê com calma e a vez passa para {o}. Ninguém perde estrela por errar.',
     estrelas: '+15 por conta certa.',
   },
   puzzle: {
@@ -240,9 +240,21 @@ function marcarVisto(mode) {
   if (estado() && existe(saveState)) saveState();
 }
 
+// {o}, {O} e {de} viram o nome do mascote de quem joga: "a Juba", "o Capi"
+// ou o nome que a criança escolheu. O nome já vem saneado (só letras,
+// números, espaço, hífen e apóstrofo).
+function comNome(texto) {
+  const g = estado();
+  const m = root.CM_MASCOTE && g ? root.CM_MASCOTE.especie(g.mascote, g.nomeMascote)
+                                 : { o: 'a Juba', O: 'A Juba', de: 'da Juba' };
+  return String(texto).replace(/\{o\}/g, m.o).replace(/\{O\}/g, m.O).replace(/\{de\}/g, m.de);
+}
+
 function montarCorpo(mode) {
-  const t = TUTORIAIS[mode];
-  if (!t) return '';
+  const t0 = TUTORIAIS[mode];
+  if (!t0) return '';
+  const t = { nome: t0.nome, icone: t0.icone, treina: comNome(t0.treina), passos: t0.passos.map(comNome),
+              erro: comNome(t0.erro), estrelas: t0.estrelas, extra: t0.extra ? comNome(t0.extra) : '' };
   const passos = t.passos.map((p, i) =>
     '<li class="tuto-passo"><span class="tuto-passo-num">' + (i + 1) + '</span>' +
     '<span class="tuto-passo-texto">' + p + '</span></li>').join('');

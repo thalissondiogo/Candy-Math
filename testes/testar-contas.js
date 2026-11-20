@@ -230,6 +230,9 @@ async function main() {
   // A questão passa pelo caminho do jogo: registrarTrabalho e registrarResultado.
   await avaliar(c, "registrarTrabalho({o:'Teste de metas',u:'numeros',bncc:['EF07MA01']});registrarResultado(true);"
     + "registrarTrabalho({o:'Teste de metas',u:'numeros',bncc:['EF07MA01']});registrarResultado(false);saveState();true");
+  await avaliar(c, "G.nomeMascote='Trovão';saveState();true");
+  confere('o nome do mascote do Téo vai para a chave dele',
+    (await avaliar(c, `(window.__T.save('candymath_v3#${idTeo}')||{}).nomeMascote`)) === 'Trovão');
   const evidTeo = await avaliar(c, `(window.__T.save('candymath_v3#${idTeo}')||{}).evidencias`);
   confere('as evidências do Téo vão para a chave dele',
     !!evidTeo && evidTeo.n === 2 && evidTeo.h.EF07MA01 && evidTeo.h.EF07MA01.length === 2, evidTeo);
@@ -298,6 +301,7 @@ async function main() {
   confere('Manu entra com as próprias metas, sem os dias do Téo',
     metasManu.dia.respostas === 0 && metasManu.semana.respostas === 0 && metasManu.dias.length === 0, metasManu);
   confere('Manu entra sem as evidências do Téo', await avaliar(c, '!G.evidencias.h.EF07MA01'));
+  confere('Manu entra com o nome de sempre do mascote, não o do Téo', await avaliar(c, "G.nomeMascote===''"));
   const bandanaManu = await avaliar(c, `({ estagio:CM_METAS.insignia(G.metas).estagio,
     hub:document.querySelector('#oncaDisplay svg').getAttribute('aria-label'),
     chave:document.getElementById('oncaDisplay').dataset.figurino })`);

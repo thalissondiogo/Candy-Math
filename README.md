@@ -57,8 +57,8 @@ favicon.png           o mesmo rosto em 32×32, para quem não aceita ícone veto
 script.js             estado, fluxo de rodada, feedback pedagógico, save/load
 conteudo.js           motor de conteúdo: 55 geradores com valores calculados
 banco-itens.js        banco autoral: 311 situações escritas + 96 afirmações V/F
-guarda-roupa.js       catálogo da loja: 79 peças, preços, abas e conjuntos
-mascote.js            Juba Candy em SVG: desenho por peça, recortes, figurino e insígnia da bandana (estágios 1 a 4)
+guarda-roupa.js       catálogo da loja: 79 peças, preços, abas e conjuntos; roupa em camadas (camisa, calça e capa combinam; roupa inteira tira camisa e calça)
+mascote.js            mascote em SVG (onça, capivara ou lobo-guará, com nome escolhido pela criança): desenho por peça, recortes, figurino e insígnia da bandana (estágios 1 a 4)
 metas.js              contagem por dia e semana (missões, dias de atividade, conquistas), só no aparelho
 pedagogia.js          habilidades BNCC, grafo de pré-requisitos (proposta não validada) e evidências por resposta, só no aparelho
 contas.js             conta de quem acompanha, perfis de estudante, PIN e porta do adulto

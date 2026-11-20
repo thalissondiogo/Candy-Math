@@ -947,18 +947,20 @@ function pintarEntrada() {
     // ou com save torto, é o lenço azul de sempre (estágio 1).
     let insignia = { estagio: 1, descricao: '' };
     let especie = 'onca';
+    let nomeProprio = '';
     if (p) {
       try {
         const salvo = JSON.parse(root.localStorage.getItem(CHAVE_SAVE + '#' + p.id) || 'null') || {};
         equip = salvo.equip;
         especie = root.CM_MASCOTE.especieValida(salvo.mascote);
+        nomeProprio = salvo.nomeMascote;
         if (root.CM_METAS) insignia = root.CM_METAS.insignia(root.CM_METAS.sanitizar(salvo.metas, Date.now()));
       } catch (e) { equip = null; insignia = { estagio: 1, descricao: '' }; }
     }
     // Corpo inteiro, não busto: o recorte de busto terminava num corte reto na
     // altura dos ombros, sem moldura, e lia-se como imagem cortada pela metade.
     // A Juba de pé é a mesma do splash — é ela que a criança reconhece.
-    const nomeBicho = root.CM_MASCOTE.especie(especie).nome;
+    const nomeBicho = root.CM_MASCOTE.especie(especie, nomeProprio).nome;
     palco.innerHTML = root.CM_MASCOTE.svg(equip || {}, { corte: 'inteiro', estagio: insignia.estagio, especie: especie,
       titulo: nomeBicho + (insignia.descricao ? ' ' + insignia.descricao + ',' : '') + ' esperando para jogar' });
   }

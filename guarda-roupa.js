@@ -69,16 +69,16 @@ const OCULOS = [
 // ── Roupas avulsas: camisetas e calças com conta ─────────
 const ROUPAS = [
   { id: 'out_apron',   cat: 'outfit', name: 'Avental de Confeitaria', icon: 'fa-ice-cream',        iconColor: '#FF6B9D', price: 80,  rarity: 'incomum', desc: 'Bolso para guardar balas e sobras de massa.' },
-  { id: 'out_cape',    cat: 'outfit', name: 'Capa de Super-Herói',  icon: 'fa-shield',           iconColor: '#9B5DE5', price: 100, rarity: 'raro',    desc: 'Voa junto com o vento da corrida.' },
+  { id: 'out_cape',    cat: 'outfit', slot: 'cape', name: 'Capa de Super-Herói',  icon: 'fa-shield',           iconColor: '#9B5DE5', price: 100, rarity: 'raro',    desc: 'Voa junto com o vento da corrida.' },
   { id: 'out_tuxedo',  cat: 'outfit', name: 'Smoking Elegante',       icon: 'fa-shirt',            iconColor: '#3A2A4D', price: 90,  rarity: 'raro',    desc: 'Para o baile de gala da confeitaria.' },
   { id: 'out_wizard',  cat: 'outfit', name: 'Roupa de Mago',          icon: 'fa-wand-sparkles',    iconColor: '#9B5DE5', price: 110, rarity: 'epico',   desc: 'Estrelas costuradas no manto.' },
-  { id: 'shirt_mais',  cat: 'outfit', name: 'Camiseta Mais e Menos',  icon: 'fa-plus-minus',       iconColor: '#FF4757', price: 35,  rarity: 'comum',   desc: 'Sinais coloridos na frente e nas mangas.' },
-  { id: 'shirt_mult',  cat: 'outfit', name: 'Camiseta Vez e Divide',  icon: 'fa-calculator',       iconColor: '#3DBBFF', price: 40,  rarity: 'comum',   desc: 'Tabuada bordada em conta de doce.' },
-  { id: 'shirt_igual', cat: 'outfit', name: 'Camiseta Sinal de Igual',icon: 'fa-equals',           iconColor: '#6BCB77', price: 45,  rarity: 'incomum', desc: 'Os dois lados sempre pesam igual.' },
-  { id: 'shirt_pct',   cat: 'outfit', name: 'Blusa Porcentagem',      icon: 'fa-percent',          iconColor: '#FF9A3C', price: 55,  rarity: 'incomum', desc: 'Cem contas de açúcar distribuídas na manga.' },
-  { id: 'pants_confe', cat: 'outfit', name: 'Calça de Confeitos',     icon: 'fa-shield',           iconColor: '#FF6B9D', price: 50,  rarity: 'incomum', desc: 'Bolinhas de todos os sabores nos bolsos.' },
-  { id: 'pants_tabua', cat: 'outfit', name: 'Calça da Tabuada',       icon: 'fa-scroll',           iconColor: '#9B5DE5', price: 60,  rarity: 'raro',    desc: 'As nove linhas da tabuada, uma por perna.' },
-  { id: 'vest_doce',   cat: 'outfit', name: 'Colete de Algodão-Doce', icon: 'fa-vest',             iconColor: '#FF4757', price: 65,  rarity: 'raro',    desc: 'Enchido de algodão-doce, leve de verdade.' },
+  { id: 'shirt_mais',  cat: 'outfit', slot: 'top', name: 'Camiseta Mais e Menos',  icon: 'fa-plus-minus',       iconColor: '#FF4757', price: 35,  rarity: 'comum',   desc: 'Sinais coloridos na frente e nas mangas.' },
+  { id: 'shirt_mult',  cat: 'outfit', slot: 'top', name: 'Camiseta Vez e Divide',  icon: 'fa-calculator',       iconColor: '#3DBBFF', price: 40,  rarity: 'comum',   desc: 'Tabuada bordada em conta de doce.' },
+  { id: 'shirt_igual', cat: 'outfit', slot: 'top', name: 'Camiseta Sinal de Igual',icon: 'fa-equals',           iconColor: '#6BCB77', price: 45,  rarity: 'incomum', desc: 'Os dois lados sempre pesam igual.' },
+  { id: 'shirt_pct',   cat: 'outfit', slot: 'top', name: 'Blusa Porcentagem',      icon: 'fa-percent',          iconColor: '#FF9A3C', price: 55,  rarity: 'incomum', desc: 'Cem contas de açúcar distribuídas na manga.' },
+  { id: 'pants_confe', cat: 'outfit', slot: 'bottom', name: 'Calça de Confeitos',     icon: 'fa-shield',           iconColor: '#FF6B9D', price: 50,  rarity: 'incomum', desc: 'Bolinhas de todos os sabores nos bolsos.' },
+  { id: 'pants_tabua', cat: 'outfit', slot: 'bottom', name: 'Calça da Tabuada',       icon: 'fa-scroll',           iconColor: '#9B5DE5', price: 60,  rarity: 'raro',    desc: 'As nove linhas da tabuada, uma por perna.' },
+  { id: 'vest_doce',   cat: 'outfit', slot: 'top', name: 'Colete de Algodão-Doce', icon: 'fa-vest',             iconColor: '#FF4757', price: 65,  rarity: 'raro',    desc: 'Enchido de algodão-doce, leve de verdade.' },
   { id: 'dress_mor',   cat: 'outfit', name: 'Vestido Morango',        icon: 'fa-person-dress',     iconColor: '#FF4757', price: 45,  rarity: 'comum',   desc: 'Rodado, com cheiro de geleia.' },
   { id: 'dress_uva',   cat: 'outfit', name: 'Vestido Uva',            icon: 'fa-person-dress',     iconColor: '#9B5DE5', price: 45,  rarity: 'comum',   desc: 'Roxo de bala de goma.' },
   { id: 'dress_lima',  cat: 'outfit', name: 'Vestido Lima-Limão',     icon: 'fa-person-dress',     iconColor: '#6BCB77', price: 45,  rarity: 'comum',   desc: 'Azedinho e refrescante.' },
@@ -199,15 +199,19 @@ const ABAS = [
 ];
 
 // Slots na ordem em que aparecem no boneco e no salvamento.
-const SLOTS = ['hat', 'wig', 'mask', 'glasses', 'outfit', 'shoes', 'accessory'];
+// A roupa é em camadas: camisa (camisetas, blusa e colete), calça e capa
+// combinam entre si; a roupa inteira (vestidos, conjuntos, avental, smoking,
+// manto) cobre o corpo todo e por isso tira camisa e calça.
+const SLOTS = ['hat', 'wig', 'mask', 'glasses', 'outfit', 'top', 'bottom', 'cape', 'shoes', 'accessory'];
 const ROTULO_SLOT = {
   hat: 'Chapéu', wig: 'Peruca', mask: 'Máscara', glasses: 'Óculos',
-  outfit: 'Roupa', shoes: 'Calçado', accessory: 'Extra',
+  outfit: 'Roupa inteira', top: 'Camisa', bottom: 'Calça', cape: 'Capa',
+  shoes: 'Calçado', accessory: 'Extra',
 };
-// Duas peças que ocupam o mesmo pedaço do rosto não cabem juntas. Ao
+// Duas peças que ocupam o mesmo pedaço do corpo não cabem juntas. Ao
 // vestir uma, a outra sai — e a loja avisa qual saiu, em vez de empilhar
-// máscara por cima de óculos.
-const EXCLUSIVOS = [['mask', 'glasses']];
+// máscara por cima de óculos ou vestido por cima de calça.
+const EXCLUSIVOS = [['mask', 'glasses'], ['outfit', 'top'], ['outfit', 'bottom']];
 
 const CM_GUARDAROPA = {
   itens: ITENS,

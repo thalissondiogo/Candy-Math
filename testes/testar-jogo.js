@@ -1191,6 +1191,58 @@ async function main() {
   await avaliar(c, "closeAllModals(); goHub(); true");
   confere('o hub também mostra a capivara', await avaliar(c, "/^Capi Candy/.test(document.querySelector('#oncaDisplay svg').getAttribute('aria-label'))"));
 
+  // ── 13p. roupas em camadas: camisa, calça e capa juntas; vestido tira as duas ──
+  const camadasAntes = await avaliar(c, "JSON.stringify({ equip:G.equip, owned:G.owned })");
+  await avaliar(c, "['shirt_mais','pants_tabua','out_cape','dress_mor'].forEach(function(id){ if(G.owned.indexOf(id)<0) G.owned.push(id); }); openShop(); true");
+  await espera(400);
+  for (const id of ['shirt_mais', 'pants_tabua', 'out_cape']) {
+    await avaliar(c, `window.__J.clicarPeca(${JSON.stringify(id)},'Vestir')`);
+    await espera(200);
+  }
+  const camadas = await avaliar(c, `({ e:G.equip, salvo:window.__J.save().equip,
+    rotulo:document.querySelector('#wdMascote svg').getAttribute('aria-label'),
+    slots:Array.prototype.slice.call(document.querySelectorAll('#wdSlots .wd-slot.posto .ws-rotulo')).map(function(x){return x.textContent;}) })`);
+  confere('camisa, calça e capa ficam vestidas juntas e gravadas',
+    camadas.e.top === 'shirt_mais' && camadas.e.bottom === 'pants_tabua' && camadas.e.cape === 'out_cape' &&
+    camadas.salvo.top === 'shirt_mais' && camadas.salvo.bottom === 'pants_tabua' && camadas.salvo.cape === 'out_cape', camadas);
+  confere('o palco descreve as três peças', /Camiseta Mais e Menos/.test(camadas.rotulo) && /Calça da Tabuada/.test(camadas.rotulo) && /Capa/.test(camadas.rotulo), camadas.rotulo);
+  confere('a lista do que está vestindo mostra Camisa, Calça e Capa',
+    ['Camisa', 'Calça', 'Capa'].every((r) => camadas.slots.indexOf(r) >= 0), camadas.slots);
+  await avaliar(c, "window.__J.clicarPeca('dress_mor','Vestir')");
+  await espera(200);
+  const vestido = await avaliar(c, "({ e:G.equip, aviso:window.__J.aviso().join(' | ') })");
+  confere('o vestido tira camisa e calça, mantém a capa e avisa o que saiu',
+    vestido.e.outfit === 'dress_mor' && !vestido.e.top && !vestido.e.bottom && vestido.e.cape === 'out_cape' &&
+    /saiu para caber/.test(vestido.aviso), vestido);
+
+  // ── 13q. nome do mascote ──
+  const campoNome = await avaliar(c, `(function(){ var i=document.getElementById('wdNome'), l=document.querySelector('label[for=wdNome]');
+    return { existe:!!i, rotulo:l && l.textContent.trim(), vazio:i.value, dica:i.placeholder, max:i.maxLength }; })()`);
+  confere('o Guarda-Roupa tem o campo Nome do mascote, rotulado, vazio e com o nome da espécie como dica',
+    campoNome.existe && campoNome.rotulo === 'Nome do mascote' && campoNome.vazio === '' && campoNome.dica === 'Capi Candy' && campoNome.max === 20, campoNome);
+  await avaliar(c, "var i=document.getElementById('wdNome'); i.focus(); i.value='  Bolinha <b>'; i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})); true");
+  await espera(250);
+  const nomeado = await avaliar(c, `({ g:G.nomeMascote, salvo:window.__J.save().nomeMascote, campo:document.getElementById('wdNome').value,
+    aviso:window.__J.texto('wdNomeAviso'), palco:document.querySelector('#wdMascote svg').getAttribute('aria-label'),
+    volta:!document.getElementById('wdNomeOriginal').hidden })`);
+  confere('Enter salva o nome, sem os símbolos, e grava no perfil',
+    nomeado.g === 'Bolinha b' && nomeado.salvo === 'Bolinha b' && nomeado.campo === 'Bolinha b', nomeado);
+  confere('o aviso confirma o nome novo e o palco já o usa',
+    /se chama Bolinha b/.test(nomeado.aviso) && /^Bolinha b /.test(nomeado.palco) && !/Capi/.test(nomeado.palco) && nomeado.volta, nomeado);
+  await avaliar(c, "var i=document.getElementById('wdNome'); i.value='Bolinha'; document.querySelector('[data-acao=salvarNomeMascote]').click(); true");
+  await espera(200);
+  await avaliar(c, "var i=document.getElementById('wdNome'); i.value='<<<>>>'; document.querySelector('[data-acao=salvarNomeMascote]').click(); true");
+  await espera(200);
+  confere('nome só de símbolos é recusado e o nome anterior fica',
+    await avaliar(c, "G.nomeMascote==='Bolinha' && /letras e números/.test(window.__J.texto('wdNomeAviso'))"));
+  await avaliar(c, "G.equip=JSON.parse(" + JSON.stringify(camadasAntes) + ").equip; G.owned=JSON.parse(" + JSON.stringify(camadasAntes) + ").owned; saveState(); closeAllModals(); goHub(); true");
+  await espera(300);
+  confere('o hub usa o nome novo', await avaliar(c, "/^Bolinha/.test(document.querySelector('#oncaDisplay svg').getAttribute('aria-label'))"));
+  const velhaNome = await avaliar(c, `(function(){ var t=CM_TUTORIAL && document.createElement('div'); G.comoJogarVisto.velha=false;
+    startMode('velha'); var corpo=document.getElementById('tutoCorpo'); var txt=corpo?corpo.textContent:''; closeAllModals(); return txt; })()`);
+  confere('o tutorial da Velha Doce chama o mascote pelo nome novo', /Bolinha é o O/.test(velhaNome) && !/Juba/.test(velhaNome), velhaNome.slice(0, 200));
+  await avaliar(c, "G.comoJogarVisto.velha=true; saveState(); goHub(); true");
+
   // ── 14. recarregar: o figurino e o progresso voltam ──
   await avaliar(c, "document.querySelector('.bha-shop').click()");
   await espera(400);
@@ -1200,7 +1252,7 @@ async function main() {
   await espera(300);
   const guardado = await avaliar(c, `({chave:CM_CONTAS.chaveDoSave(),stars:G.stars,ano:G.ano,nivel:G.nivel,
     acertos:G.totalCorrect,owned:G.owned.slice().sort(),equip:G.equip,seq:G.bestStreak,hist:Object.keys(G.hist).length,
-    metas:JSON.stringify(G.metas), conquistas:JSON.stringify(G.metas.conquistas), evid:JSON.stringify(G.evidencias)})`);
+    metas:JSON.stringify(G.metas), conquistas:JSON.stringify(G.metas.conquistas), evid:JSON.stringify(G.evidencias), nome:G.nomeMascote})`);
   confere('o save do convidado fica na chave sem perfil', guardado.chave === 'candymath_v3', guardado.chave);
   confere('as duas peças estão vestidas antes de recarregar',
     guardado.equip[slotBarato] === barato && guardado.equip.glasses === oculos, guardado.equip);
@@ -1220,6 +1272,7 @@ async function main() {
   confere('a melhor sequência volta', voltou.seq === guardado.seq);
   confere('o histórico por conteúdo volta inteiro', voltou.hist === guardado.hist && voltou.hist > 0, voltou);
   confere('as metas do dia e a lista de dias voltam iguais', voltou.metas === guardado.metas, { guardado: guardado.metas, voltou: voltou.metas });
+  confere('o nome do mascote volta depois de recarregar', guardado.nome === 'Bolinha' && (await avaliar(c, "G.nomeMascote")) === 'Bolinha', guardado.nome);
   confere('as evidências voltam iguais depois de recarregar',
     (await avaliar(c, 'JSON.stringify(G.evidencias)')) === guardado.evid && JSON.parse(guardado.evid).n > 0, guardado.evid.length);
   confere('o mascote escolhido volta depois de recarregar', await avaliar(c, "G.mascote === 'capivara' && document.getElementById('oncaDisplay').innerHTML.indexOf('#B07A4A') >= 0"));
@@ -1271,6 +1324,7 @@ async function main() {
   confere('apagar zera as metas na memória',
     apagado.m.dias.length === 0 && apagado.m.dia.respostas === 0 && apagado.m.semana.rodadas === 0, apagado.m);
   confere('apagar zera as metas gravadas', !!apagado.s && apagado.s.dias.length === 0 && apagado.s.dia.respostas === 0, apagado.s);
+  confere('apagar devolve o nome original do mascote', await avaliar(c, "G.nomeMascote==='' && window.__J.save().nomeMascote===''"));
   confere('apagar zera as evidências na memória e no save',
     await avaliar(c, "G.evidencias.n===0 && Object.keys(G.evidencias.h).length===0 && window.__J.save().evidencias.n===0"));
 
@@ -1342,7 +1396,8 @@ async function main() {
   await espera(300);
   // Save com evidências adulteradas: abre, descarta só o que não confere e não acusa dano.
   await avaliar(c, `(function(){ var d=new Date(), hoje=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000);
-    localStorage.setItem('candymath_v3', JSON.stringify({stars:10, ano:3, nivel:1, hist:{}, equip:{}, owned:[], comoJogarVisto:{quiz:true},
+    localStorage.setItem('candymath_v3', JSON.stringify({stars:10, ano:3, nivel:1, hist:{}, equip:{outfit:'shirt_pct'}, owned:['shirt_pct'], comoJogarVisto:{quiz:true},
+    nomeMascote:'<script>alert(1)</script>',
     evidencias:{ v:1, n:3, t:{ c:['Adição','<img src=x onerror=alert(1)>'], x:['banco'], j:['quiz'] },
       h:{ EF03MA05:[[1,hoje,1,0,0,0],[1,hoje,0,0,0,0],[2,hoje+90,1,0,0,0],[3,hoje,1,0,1,0]], 'EF99XX':[[4,hoje,1,0,0,0]] } } })); return true; })()`);
   await abrir(c, 390, 844, BASE);
@@ -1351,6 +1406,10 @@ async function main() {
   const adult = await avaliar(c, "({ l:CM_PEDAGOGIA.evidencias(G.evidencias), dano:localStorage.getItem('candymath_v3_danificado'), stars:G.stars })");
   confere('save com evidências adulteradas abre, fica só o registro válido e não acusa dano',
     adult.l.length === 1 && adult.l[0].n === 1 && adult.l[0].conteudo === 'Adição' && adult.dano === null && adult.stars === 10, adult);
+  confere('save de antes das camadas: a camisa guardada em "roupa" vai para a camada Camisa',
+    await avaliar(c, "G.equip.top==='shirt_pct' && !G.equip.outfit"), await avaliar(c, 'G.equip'));
+  confere('nome do mascote adulterado no storage chega saneado, sem tags',
+    await avaliar(c, "G.nomeMascote==='scriptalert1script' && document.body.innerHTML.indexOf('<script>alert')<0"), await avaliar(c, 'G.nomeMascote'));
 
   // ── 15. nenhum erro de console no percurso ──
   const gritos = c.eventos.filter((e) =>

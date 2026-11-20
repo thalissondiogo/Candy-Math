@@ -212,6 +212,51 @@ GR.abas.forEach((aba) => {
   });
 }
 
+// ── 6d. toda peça veste o mascote, em toda espécie, e as camadas combinam ──
+{
+  M.especies.forEach((esp) => {
+    const nu = M.svg(GR.equipVazio(), { especie: esp.id });
+    const sem = GR.itens.filter((i) => {
+      const e = GR.equipVazio(); e[i.slot] = i.id;
+      return !M.temPeca(i.slot, i.id) || M.svg(e, { especie: esp.id }) === nu;
+    }).map((i) => i.id);
+    ok(sem.length === 0, esp.id + ': peças que não aparecem no mascote: ' + sem.join(', '));
+  });
+  ['top', 'bottom', 'cape'].forEach((s) => ok(GR.slots.indexOf(s) >= 0 && GR.itens.some((i) => i.slot === s), 'falta a camada ' + s));
+  ok(GR.conflitaCom('top').indexOf('bottom') < 0 && GR.conflitaCom('cape').length === 0, 'camisa, calça e capa deveriam combinar entre si');
+  ok(GR.conflitaCom('outfit').indexOf('top') >= 0 && GR.conflitaCom('outfit').indexOf('bottom') >= 0, 'a roupa inteira deveria tirar camisa e calça');
+  // Camisa + calça + capa juntas: cada peça deixa marca no desenho.
+  const tudo = { top: 'shirt_mais', bottom: 'pants_tabua', cape: 'out_cape' };
+  const junto = M.svg(tudo);
+  Object.keys(tudo).forEach((s) => {
+    const sem = Object.assign({}, tudo); delete sem[s];
+    ok(M.svg(sem) !== junto, 'na combinação, a peça de ' + s + ' não aparece');
+  });
+  ok(junto.indexOf('#FF4757') >= 0 && junto.indexOf('#9B5DE5') >= 0, 'camisa ou calça sumiu por baixo da capa');
+  // Save de antes das camadas: camisa, calça e capa guardadas em "outfit".
+  ['shirt_mais', 'pants_confe', 'out_cape', 'vest_doce'].forEach((id) => {
+    const slot = GR.porId(id).slot;
+    ok(M.svg({ outfit: id }) === M.svg({ [slot]: id }), id + ' guardada no formato antigo não desenha igual');
+  });
+  ok(M.svg({ outfit: 'dress_mor' }) !== M.svg({}), 'roupa inteira deixou de desenhar');
+}
+
+// ── 6e. nome próprio do mascote ──────────────────────────
+{
+  ok(M.nomeValido('  Bolinha  ') === 'Bolinha', 'nome não perde os espaços das pontas');
+  ok(M.nomeValido('Pé-de-Moleque') === 'Pé-de-Moleque' && M.nomeValido("D'Ávila") === "D'Ávila", 'nome com acento, hífen ou apóstrofo é recusado');
+  ok(M.nomeValido('<b>Bia</b>') === 'bBiab' && M.nomeValido('<img src=x onerror=alert(1)>') === 'img srcx onerroraler', 'nome com tags não é limpo');
+  ok(M.nomeValido('a'.repeat(50)).length === M.NOME_MAX, 'nome comprido não é cortado em ' + M.NOME_MAX);
+  ok([null, undefined, 7, {}, [], '', '   ', '<>&'].every((x) => M.nomeValido(x) === ''), 'lixo não vira nome vazio');
+  const padrao = M.especie('capivara'), proprio = M.especie('capivara', 'Bolinha');
+  ok(padrao.nome === 'Capi Candy' && padrao.o === 'o Capi' && padrao.O === 'O Capi' && padrao.de === 'do Capi' && !padrao.proprio, 'nome da espécie mudou');
+  ok(proprio.nome === 'Bolinha' && proprio.curto === 'Bolinha' && proprio.o === 'Bolinha' && proprio.de === 'de Bolinha' && proprio.proprio && proprio.animal === 'capivara',
+    'o nome próprio não substitui nome, apelido e artigo');
+  ok(M.especie('onca', '').o === 'a Juba' && M.especie('guara').o === 'o Guará', 'artigo das espécies errado');
+  ok(/aria-label="Bolinha, o mascote do Candy Math"/.test(M.svg({}, { nome: 'Bolinha' })), 'o desenho não usa o nome próprio no rótulo');
+  ok(M.svg({}, { nome: '<>&' }) === M.svg({}), 'nome inválido muda o desenho');
+}
+
 // ── 7. a página carrega o desenho antes de quem o usa ────
 {
   const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');

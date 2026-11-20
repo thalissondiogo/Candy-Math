@@ -783,11 +783,44 @@ const ATRAS = {
 };
 
 // ── Montagem ─────────────────────────────────────────────
+// Roupa em camadas: camisa e calça combinam; a capa vai por cima de tudo
+// (costas atrás do corpo, fecho na gola). A roupa inteira cobre o corpo.
+const CAMADAS = {
+  top: ['shirt_mais', 'shirt_mult', 'shirt_igual', 'shirt_pct', 'vest_doce'],
+  bottom: ['pants_confe', 'pants_tabua'],
+  cape: ['out_cape'],
+};
+function separar(ids) {
+  const t = {};
+  ids.forEach((id) => { t[id] = ROUPAS[id]; });
+  return t;
+}
+const INTEIRAS = Object.assign({}, ROUPAS, CONJUNTOS);
+Object.keys(CAMADAS).forEach((k) => CAMADAS[k].forEach((id) => { delete INTEIRAS[id]; }));
 const POR_SLOT = {
   hat: CHAPEUS, mask: MASCARAS, glasses: OCULOS,
-  outfit: Object.assign({}, ROUPAS, CONJUNTOS),
+  outfit: INTEIRAS, top: separar(CAMADAS.top), bottom: separar(CAMADAS.bottom), cape: separar(CAMADAS.cape),
   shoes: CALCADOS, accessory: EXTRAS,
 };
+// Saves de antes das camadas guardavam camisa, calça e capa em "outfit".
+// O desenho aceita esse formato: a peça vai para a camada dela.
+function normalizar(equip) {
+  const e = Object.assign({}, equip || {});
+  if (e.outfit && !INTEIRAS[e.outfit]) {
+    Object.keys(CAMADAS).forEach((k) => {
+      if (CAMADAS[k].indexOf(e.outfit) >= 0 && !e[k]) e[k] = e.outfit;
+    });
+    e.outfit = null;
+  }
+  return e;
+}
+// Com camisa ou roupa por baixo, a capa mostra só o fecho na gola; sozinha,
+// continua com a camiseta de estrela que sempre teve.
+function capaNaFrente(e) {
+  if (!e.cape) return '';
+  if (e.top || e.outfit) return fio('M 88 150 Q 110 162 132 150', '#7B3FD1', 5) + bola(110, 158, 5, '#FFD93D');
+  return desenhoDe('cape', e.cape);
+}
 
 function desenhoDe(slot, id) {
   if (!id) return '';
@@ -796,7 +829,7 @@ function desenhoDe(slot, id) {
   return fn ? fn() : '';
 }
 
-const SLOTS = ['hat', 'wig', 'mask', 'glasses', 'outfit', 'shoes', 'accessory'];
+const SLOTS = ['hat', 'wig', 'mask', 'glasses', 'outfit', 'top', 'bottom', 'cape', 'shoes', 'accessory'];
 
 function assinatura(equip) {
   const e = equip || {};
@@ -848,16 +881,27 @@ Object.keys(ESPECIES).forEach((k) => {
 });
 function especieValida(e) { return Object.prototype.hasOwnProperty.call(ESPECIES, e) ? e : 'onca'; }
 
+// Nome que a criança dá ao mascote. Vem do storage e de um campo de texto:
+// só letras (com acento), números, espaço, hífen e apóstrofo, até 20
+// caracteres. Vazio quer dizer "o nome de sempre da espécie".
+const NOME_MAX = 20;
+function nomeValido(s) {
+  if (typeof s !== 'string') return '';
+  return s.normalize('NFC').replace(/[^\p{L}\p{N} '\-]/gu, '').replace(/\s+/g, ' ').trim()
+    .slice(0, NOME_MAX).trim();
+}
+
 const cache = {};
 
 function svg(equip, opcoes) {
   const o = opcoes || {};
   const corte = VISTAS[o.corte] ? o.corte : 'inteiro';
-  const e = equip || {};
+  const e = normalizar(equip);
   const estagio = estagioValido(o.estagio);
   const especie = especieValida(o.especie);
   const corpoDa = CORPOS[especie];
-  const chave = corte + '#' + assinatura(e) + '#' + estagio + '#' + especie + '#' + (o.titulo || '');
+  const nome = nomeValido(o.nome);
+  const chave = corte + '#' + assinatura(e) + '#' + estagio + '#' + especie + '#' + (o.titulo || '') + '#' + nome;
   if (cache[chave]) return cache[chave];
 
   const peruca = e.wig ? PERUCAS[e.wig] : null;
@@ -880,6 +924,7 @@ function svg(equip, opcoes) {
     caixa = (e.hat || e.wig) ? '32 -22 160 176' : '44 18 136 138';
   } else {
     const atras = (ATRAS[e.outfit] ? ATRAS[e.outfit]() : '') +
+                  (ATRAS[e.cape] ? ATRAS[e.cape]() : '') +
                   (ATRAS[e.accessory] ? ATRAS[e.accessory]() : '');
     // Asa é peça de costas e não se repete na frente.
     const extraFrente = e.accessory === 'acc_asa' ? '' : desenhoDe('accessory', e.accessory);
@@ -888,14 +933,17 @@ function svg(equip, opcoes) {
       (peruca && peruca.tras ? peruca.tras() : '') +
       corpoDa.CORPO +
       desenhoDe('shoes', e.shoes) +
+      desenhoDe('bottom', e.bottom) +
+      desenhoDe('top', e.top) +
       desenhoDe('outfit', e.outfit) +
+      capaNaFrente(e) +
       BANDANA_DESENHO +
       INSIGNIAS[estagio] +
       cabeca +
       extraFrente;
   }
 
-  const titulo = String(o.titulo || ESPECIES[especie].nome + ', o mascote do Candy Math')
+  const titulo = String(o.titulo || (nome || ESPECIES[especie].nome) + ', o mascote do Candy Math')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const saida = '<svg class="mascote-svg" viewBox="' + caixa +
     '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' + titulo +
@@ -921,6 +969,9 @@ const JANELA = {
   mask:      '54 16 132 104',
   glasses:   '52 60 116 70',
   outfit:    '22 128 176 168',
+  top:       '22 128 176 168',
+  bottom:    '22 128 176 168',
+  cape:      '22 128 176 168',
   shoes:     '62 230 96 76',
   accessory: '140 176 64 84',
 };
@@ -996,8 +1047,19 @@ root.CM_MASCOTE = {
   slots: SLOTS,
   estagioValido: estagioValido,
   especies: Object.keys(ESPECIES).map((k) => ({ id: k, nome: ESPECIES[k].nome, curto: ESPECIES[k].curto, de: ESPECIES[k].de, animal: ESPECIES[k].animal })),
-  especie: function (k) { const e = ESPECIES[especieValida(k)]; return { nome: e.nome, curto: e.curto, de: e.de, animal: e.animal }; },
+  // Com nome próprio, ele substitui nome e apelido; "de" fica neutro.
+  especie: function (k, nomeProprio) {
+    const e = ESPECIES[especieValida(k)];
+    const n = nomeValido(nomeProprio);
+    // o / O: o nome como entra no meio da frase ("a Juba", "o Capi"; nome
+    // próprio vai sem artigo) e no começo dela ("A Juba").
+    const o = n || e.de.replace(/^d/, '');
+    return { nome: n || e.nome, curto: n || e.curto, de: n ? 'de ' + n : e.de, o: o,
+             O: o.charAt(0).toUpperCase() + o.slice(1), animal: e.animal, original: e.nome, proprio: !!n };
+  },
   especieValida: especieValida,
+  nomeValido: nomeValido,
+  NOME_MAX: NOME_MAX,
   temPeca: function (slot, id) {
     if (slot === 'wig') return !!(id && PERUCAS[id]);
     return !!(id && POR_SLOT[slot] && POR_SLOT[slot][id]);
